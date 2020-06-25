@@ -153,3 +153,4 @@ dmypy.json
 *.hdf5
 *.p
 *.json
+*.csv
