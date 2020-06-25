@@ -2,7 +2,7 @@ import numpy as np
 import os
 import h5py
 import requests
-import jsonp
+import csv
 import pandas as pd
 from Variables import Load
 
@@ -11,7 +11,7 @@ def CreateProject():
     ProName = ProjectName()
     ProLoc, Lat, Lon = ProjectLoc()
     Irr = LocCheck(Lat, Lon)
-    ProjectSetup(ProName, Irr)
+    ProjectSetup(ProName, ProLoc, Irr)
 
     
 def ProjectName():
@@ -53,42 +53,44 @@ def ProjectLoc():
     return
 
 def LocCheck(Lat, Lon):
-    Response = requests.get("https://re.jrc.ec.europa.eu/api/seriescalc?lat="+str(Lat)+"&lon="+str(Lon)+"&outputformat=json")
+    url="https://re.jrc.ec.europa.eu/api/seriescalc?lat="+str(Lat)+"&lon="+str(Lon)+"&outputformat=csv"
+    Response = requests.get(url)
     Code = int(Response.status_code)
     if Code != 200:
         print("Location is not supported by PVGIS! Enter Valid Location!")
         ProjectLoc()
     else:
-        Content = Response.json()
-        return Content
+        open('Temp.csv','wb').write(Response.content)
     return 
 
-def Jsontonumpy():
-    df = pd.read_json('IrrData.json')
-    arr = df.to_numpy()
-    return arr
+def dftreat():
+    df = pd.read_csv("Temp.csv",skiprows=8,skipfooter=9,engine='python')
+    T = df["time"].str.split(":", n=1,expand=True)
+    df["time"] = T[1]
+    df["date"] = T[0]
+    return df
 
 
 
-def ProjectSetup(PrjName,Content): 
+def ProjectSetup(PrjName,Loc,Content): 
     with h5py.File(PrjName + ".hdf5", "a") as f:
         Project = f.create_group("Project")
         Inputs = f.create_group("Inputs")
         Outputs = f.create_group("Outputs")
-        EPC = Project.create_group("EPC Model")
-        PanData = Project.create_group("Pannel Data")
-        TecEco = Project.create_group("Techno Economics")
-        Loc = Project.create_group("Location")
-        Irr = Project.create_group("Irradiance")
-        Const = Project.create_group("Constants")
-        Deg = Project.create_group("Degredation Rate Check")
+        EPC = f.create_group("EPC Model")
+        PanData = f.create_group("Pannel Data")
+        TecEco = f.create_group("Techno Economics")
+        Loc = f.create_group("Location")
+        Irr = f.create_group("Irradiance")
+        Const = f.create_group("Constants")
+        Deg = f.create_group("Degredation Rate Check")
 
         Variables = Load("Variables.p")
         for Key in Variables.keys():
             Inputs.attrs[Key] = Variables[Key]
-        IrrData = JsontoPandas()
-        print(IrrData)
-        Irr.create_dataset("Irradiance Data", data=IrrData)
         f.close()
+
+    IrrData = dftreat()
+    IrrData.to_hdf(PrjName + ".hdf5",key='Irradiance', mode='a')
 
 CreateProject()
