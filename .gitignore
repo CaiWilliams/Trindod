@@ -150,6 +150,6 @@ dmypy.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
 
-.hdf5
-.p
-.json
+*.hdf5
+*.p
+*.json
