@@ -15,7 +15,7 @@ def CreateProject():
 
     
 def ProjectName():
-    os.system('cls')
+    os.system('clear')
     print("What is the name of the project?")
     name = input()
     print("Is " + name + " correct? Y/N")
@@ -30,14 +30,14 @@ def ProjectName():
     return
 
 def ProjectLoc():
-    os.system('cls')
+    os.system('clear')
     print("Location Name:")
     name = input()
     print("Location Latitude:")
     Lat = float(input())
     print("Location Longitude:")
     Lon = float(input())
-    os.system('cls')
+    os.system('clear')
     print("Location Name: " + name)
     print("Location Latitude: " + str(Lat))
     print("Location Longitude: "+ str(Lon))
