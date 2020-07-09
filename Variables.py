@@ -66,10 +66,10 @@ def GenVars():
     13:'OprCos',
     14:'RenInf', 
     }
-    pickle.dump(Variables, open("Variables.p","ab"))
-    pickle.dump(VariablesDict, open("VariablesDict.p","ab"))
-    pickle.dump(VariablesUnits, open("VariablesUnits.p","ab"))
-    pickle.dump(VariablesIntVals, open("VariablesIntVals.p","ab"))
+    pickle.dump(Variables, open("Data/Variables.p","ab"))
+    pickle.dump(VariablesDict, open("Data/VariablesDict.p","ab"))
+    pickle.dump(VariablesUnits, open("Data/VariablesUnits.p","ab"))
+    pickle.dump(VariablesIntVals, open("Data/VariablesIntVals.p","ab"))
     return
 
 def Load(FileName):
@@ -81,19 +81,19 @@ def Save(X,FileName):
     return
 
 def UserInput():
-    Variables = Load("Variables.p")
-    VariablesDict = Load("VariablesDict.p")
-    VariablesUnits = Load("VariablesUnits.p")
+    Variables = Load("Data/Variables.p")
+    VariablesDict = Load("Data/VariablesDict.p")
+    VariablesUnits = Load("Data/VariablesUnits.p")
     os.system('cls')
     PrintVars()
     change()
     return
 
 def change():
-    Variables = Load("Variables.p")
-    VariablesDict = Load("VariablesDict.p")
-    VariablesUnits = Load("VariablesUnits.p")
-    VariablesIntVals = Load("VariablesIntVals.p")
+    Variables = Load("Data/Variables.p")
+    VariablesDict = Load("Data/VariablesDict.p")
+    VariablesUnits = Load("Data/VariablesUnits.p")
+    VariablesIntVals = Load("Data/VariablesIntVals.p")
     print("")
     print("Would you like to change any value? Enter number (1-14) to do so. Otherwise just hit enter")
     x = input()
@@ -112,7 +112,7 @@ def change():
             NewVal = float(NewVal)
         print(type(NewVal))
         Variables[VariablesIntVals[int(x)]] = NewVal
-        Save(Variables,"Variables.p")
+        Save(Variables,"Data/Variables.p")
         PrintVars()
     
     print("Are you done making changes: Y/N")
@@ -120,13 +120,13 @@ def change():
     if Conf == 'n':
         change()
     else:
-        Save(Variables,"Variables.p")
+        Save(Variables,"Data/Variables.p")
         return
         
 def PrintVars():
-    Variables = Load("Variables.p")
-    VariablesDict = Load("VariablesDict.p")
-    VariablesUnits = Load("VariablesUnits.p")
+    Variables = Load("Data/Variables.p")
+    VariablesDict = Load("Data/VariablesDict.p")
+    VariablesUnits = Load("Data/VariablesUnits.p")
     os.system('cls')
     i = 1
     for Key in VariablesDict:

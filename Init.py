@@ -12,6 +12,7 @@ def CreateProject():
     ProLoc, Lat, Lon = ProjectLoc()
     Irr = LocCheck(Lat, Lon)
     ProjectSetup(ProName, ProLoc, Irr)
+    os.remove('Temp.csv')
 
     
 def ProjectName():
@@ -85,7 +86,7 @@ def ProjectSetup(PrjName,Loc,Content):
         Const = f.create_group("Constants")
         Deg = f.create_group("Degredation Rate Check")
 
-        Variables = Load("Variables.p")
+        Variables = Load("Data/Variables.p")
         for Key in Variables.keys():
             Inputs.attrs[Key] = Variables[Key]
         f.close()
