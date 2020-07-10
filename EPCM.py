@@ -1,7 +1,8 @@
 import numpy as np
+import pickle
 
 def GenEPC():
-    EPC1 = {'Project Name':,
+    CR = {'Project Name':Commercial Rooftop,
     'PV Size':,
     'System area':,
     'Project yield':,
