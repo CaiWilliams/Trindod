@@ -91,6 +91,8 @@ def ProjectSetup(PrjName,Loc,Content):
             Inputs.attrs[Key] = Variables[Key]
         f.close()
 
+        
+
     IrrData = dftreat()
     IrrData.to_hdf(PrjName + ".hdf5",key='Irradiance', mode='a')
 
