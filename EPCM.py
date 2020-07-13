@@ -93,4 +93,4 @@ def FetchLocInfo(Name, Prop):
     Rec = Rec.values[0]
     return Rec
 
-Main('19')
+Main('1')
