@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import h5py
 from datetime import datetime
+from datetime import timedelta
 
 def Setup(ProjName):
     CFC = ['Date','Project Year','Months until panel replacement','Months until inverter replacement','Panel Replacement Year','Peak Sun Hours per Month','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Retnal','Total Cost','Cost Check','LCOE']
@@ -14,7 +15,7 @@ def Setup(ProjName):
         Panel = f['Pannel Data']
 
         Initial = {'Date': StartDate(Inputs.attrs['ModSta']),
-        'Project Year': 0,
+        'Project Time': 0,
         'Months until panel replacement': Panel.attrs['Life'] * 12,
         'Months until inverter replacement': Inputs.attrs['InvLif'] * 12,
         'Panel Replacement Year' : False,
@@ -39,8 +40,8 @@ def Setup(ProjName):
         'Cost Check': np.abs((EPC['Original Price']['Price excluding panels'] + 1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp'])/EPC.attrs['PV Size'])/1000,
         'LCOE':0,
         }
-    Initial = pd.Series(Initial)
-    df = df.append(Initial, ignore_index=True)
+    InitialS = pd.Series(Initial)
+    df = df.append(InitialS, ignore_index=True)
     print(df)
     return
 
@@ -86,4 +87,20 @@ def BurnInCoef(ProjName):
 
     return
 
-BurnInCoef('1')
+def MonthsTODatetime(X)
+    X = datetime.strptime(X,'%m')
+    return X
+
+ProjectLife(Initial, TimeRes, ProjName, Data):
+    Prev = Initial
+    Curr = Initial.copy()
+    whith with h5py.File(ProjName + ".hdf5", "a") as f:
+    Inputs = f['Inputs']
+    PrjLif = Inputs.attrs['PrjLif'] * 365
+    PrjEndDate = Initial['Date'] + timedelta(days=PrjLif)
+    while  Curr['Date'] >= PrjEndDate:
+        Curr['Date'] = Prev['Date'] + timedetla(hours=TimeRes)
+        Curr['Project Time'] = Initial['Date'] - Curr['Date']
+        Curr['Months until panel replacement'] = 
+        
+    return
