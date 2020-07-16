@@ -21,7 +21,7 @@ def Setup(ProjName):
         Panel = f['Pannel Data']
 
         Initial = {'Date': StartDate(Inputs.attrs['ModSta']),
-        'Project Time': 0,
+        'Project Time': timedelta(days=0),
         'Panel Lifetime': timedelta(weeks=Panel.attrs['Life'] * 52) ,
         'Inverter Lifetime': timedelta(weeks=float(Inputs.attrs['InvLif'] * 52)),
         'Panel Replacement Year' : False,
@@ -74,11 +74,11 @@ def BurnInCoef(ProjName):
         Irr = f['Irradiance']
         DeltaD = Panel.attrs['Burn in %, Δd']
         DeltaD = DeltaD.replace("%", "")
-        DeltaD = float(DeltaD)
+        DeltaD = float(DeltaD) * 0.01
 
         dL = Panel.attrs['Long-term Degradation, dL, %/year']
         dL = dL.replace("%", "")
-        dL = float(dL)
+        dL = float(dL) * 0.01
         dL = -dL /np.sum(Irr['PeakSunHours'])
         
         ST = Panel.attrs['Burn in peak sun hours, St, hours']
@@ -114,12 +114,12 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         PrjEndDate = Initial['Date'] + timedelta(days=float(PrjLif))
         while Curr['Date'] < PrjEndDate:
             Curr['Date'] = Prev['Date'] + timedelta(hours=TimeRes)
+            Curr['Project Year'] = np.abs(Initial['Date'] - Curr['Date']).days // 365
             Curr['Project Time'] = np.abs(Initial['Date'] - Curr['Date'])
-            Curr['Panel Lifetime'] = Prev['Panel Lifetime'] - Curr['Project Time']
-            print(Curr['Panel Lifetime'])
-            Curr['Inverter Lifetime'] = Prev['Inverter Lifetime'] - Curr['Project Time']
+            Curr['Panel Lifetime'] = Prev['Panel Lifetime'] - (Curr['Project Time']-Prev['Project Time'])
+            Curr['Inverter Lifetime'] = Prev['Inverter Lifetime'] - (Curr['Project Time']-Prev['Project Time'])
 
-            if Curr['Panel Lifetime'].days >= 0:
+            if Curr['Panel Lifetime'].days > 0:
                 Curr['Panel Replacement Year'] = False
             else:
                 Curr['Panel Replacement Year'] = True
@@ -129,7 +129,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             Curr['Cumilative Sun Hours'] = Prev['Cumilative Sun Hours'] + Curr['Peak Sun Hours']
             Curr['Burn in (absolute)'] = Panel.attrs['a'] * Curr['Cumilative Sun Hours'] * Curr['Cumilative Sun Hours'] + Panel.attrs['b'] * Curr['Cumilative Sun Hours'] + 1
             Curr['Long Term Degredation'] = Panel.attrs['m'] * Curr['Cumilative Sun Hours'] + Panel.attrs['c']
-            Curr['Long Term Degredation (abs after burn in)'] = Curr['Long Term Degredation'] + float(Panel.attrs['Burn in %, Δd'].strip('%'))
+            Curr['Long Term Degredation (abs after burn in)'] = Curr['Long Term Degredation'] + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)
 
             if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn in peak sun hours, St, hours']:
                 Curr['Panel State of Health'] = Curr['Long Term Degredation (abs after burn in)']
@@ -137,7 +137,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['Panel State of Health'] = Curr['Burn in (absolute)']
             
             if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn in peak sun hours, St, hours']:
-                Curr['Peak Capacity'] = float(Initial['Peak Capacity']) * (1 - float(Panel.attrs['Burn in %, Δd'].strip('%'))) * float(Curr['Panel State of Health'])
+                Curr['Peak Capacity'] = float(Initial['Peak Capacity']) * (1 - float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01) * float(Curr['Panel State of Health'])
             else:
                 Curr['Peak Capacity'] = Initial['Peak Capacity'] * Curr['Panel State of Health']
 
@@ -198,9 +198,9 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
 
             Curr['LCOE'] = 0
 
-            Prev = Curr
             CurrS = pd.Series(Curr)
             df = df.append(CurrS,ignore_index=True)
+            Prev = Curr.copy()
         df.to_excel('1.xlsx')
     return
 
