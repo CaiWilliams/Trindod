@@ -1,0 +1,10 @@
+Location,PV Yield before LID (kWh/kWp),Tilt. deg,"Table spacing, m",Most likely IRR Scenario
+auckland,0,30,8,Medium Risk
+dunedin,66,30,8,Medium Risk
+cornwall,0,30,7,Low Risk
+edinburgh,"1,179",35,7,Low Risk
+tonga,"1,038",20,6,Very High Risk
+fiji,971,12,5,High Risk
+cairo,743,26,6,Very High Risk
+nairobi,"1,317",-1,5,High Risk
+mexicocity,"1,125",22,5,Medium Risk
