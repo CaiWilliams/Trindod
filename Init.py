@@ -82,7 +82,8 @@ def ProjectLoc():
                     Lon = row[0]
                 line = line + 1
 
-        df = pd.read_csv('Data/Location/'+file,delimiter=',')
+        df = pd.read_csv('Data/Location/'+file)
+        print(df)
         df.to_csv('Temp.csv')
     elif J == "n":
         print("Location Name:")
@@ -91,8 +92,8 @@ def ProjectLoc():
         Lat = float(input())
         print("Location Longitude:")
         Lon = float(input())
-        os.system('clear')
-    os.system('clear')
+        #os.system('clear')
+    #os.system('clear')
     print("Location Name: " + name)
     print("Location Latitude: " + str(Lat))
     print("Location Longitude: "+ str(Lon))
