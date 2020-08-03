@@ -3,6 +3,7 @@ import pandas as pd
 import pickle
 import h5py
 
+#Calcualtes or Fetches Data relateing to EPC Model
 def Main(ProjName):
     with h5py.File(ProjName + ".hdf5", "a") as f:
 
@@ -46,7 +47,10 @@ def Main(ProjName):
         ERPC = PanelData.attrs['Power density, Wp/sq.m'] * 1.968 * 0.992 
         ERP = NPG.require_dataset('Eq. rating of panels', shape=np.shape(ERPC), data=ERPC, dtype='f8')
 
-        RNPC = 1000 * EPC.attrs['PV Size']/ERPC
+        RNPC = 1000 * (EPC.attrs['PV Size']/ERPC)
+        print(EPC.attrs['PV Size'])
+        print(ERPC)
+        print(RNPC)
         RNP = NPG.require_dataset('Required number of panels', shape=np.shape(RNPC), data=RNPC, dtype='f8')
 
         ICEPC = RNPC * ICPC
@@ -56,7 +60,8 @@ def Main(ProjName):
         NPC2 = NPG.require_dataset('Panel cost', shape=np.shape(NPCC), data=NPCC, dtype='f8')
 
         NPC3 = ICEPC + NPCC
-        NP = NPG.require_dataset('New price', shape=np.shape(NP), data=NP, dtype='f8')
+
+        NP = NPG.require_dataset('New price', shape=np.shape(NPC3), data=NPC3, dtype='f8')
 
         ICPPC = IVC/ICEPC
         ICPP = NPG.require_dataset('Inverter cost as % of Ciep price', shape=np.shape(ICPPC), data=ICPPC, dtype='f8')
@@ -66,6 +71,7 @@ def Main(ProjName):
 
     return
 
+#Fetches panel tilt for location
 def TiltDeg(ProjName):
     with h5py.File(ProjName + ".hdf5", "a") as f:
         Inputs = f['Inputs']
@@ -75,6 +81,7 @@ def TiltDeg(ProjName):
         Ref = float(Rec)
     return Rec
 
+#Fetches array spaceing for location
 def ArraySpaceing(ProjName):
     with h5py.File(ProjName + ".hdf5", "a") as f:
         Inputs = f['Inputs']
@@ -84,8 +91,9 @@ def ArraySpaceing(ProjName):
         Ref = float(Rec)
     return Rec
 
+#Fetches location info from file
 def FetchLocInfo(Name, Prop):
-    df = pd.read_csv("Data/Location/LocationData.csv")
+    df = pd.read_csv("Data/LocationData.csv")
     Name = Name.replace(" ","")
     Name = Name.lower()
     Location = df.loc[df['Location'] == Name]
@@ -93,4 +101,4 @@ def FetchLocInfo(Name, Prop):
     Rec = Rec.values[0]
     return Rec
 
-Main('1')
+Main('21')

@@ -6,7 +6,7 @@ import csv
 import pandas as pd
 from Variables import Load
 
-
+#Creates project
 def CreateProject():
     ProName = ProjectName()
     ProLoc, Lat, Lon, PreCal = ProjectLoc()
@@ -30,14 +30,15 @@ def CreateProject():
                 line = line + 1
         os.remove('Temp.csv')
 
-    LocCheck(Lat, Lon)
+
     ProjectSetup(ProName)
     TypeCheck(ProName)
     PanCheck(ProName)
 
-    os.remove('Temp.csv')
+    #os.remove('Temp.csv')
 
-    
+
+#Qeries for project name
 def ProjectName():
     os.system('clear')
     print("What is the name of the project?")
@@ -53,6 +54,7 @@ def ProjectName():
         ProjectName()
     return
 
+#Queries for project location 
 def ProjectLoc():
     os.system('clear')
     print("Precalculated Location? Y/N")
@@ -92,8 +94,9 @@ def ProjectLoc():
         Lat = float(input())
         print("Location Longitude:")
         Lon = float(input())
-        #os.system('clear')
-    #os.system('clear')
+        os.system('clear')
+        LocCheck(Lat, Lon)
+    os.system('clear')
     print("Location Name: " + name)
     print("Location Latitude: " + str(Lat))
     print("Location Longitude: "+ str(Lon))
@@ -106,9 +109,9 @@ def ProjectLoc():
     else:
         print("Invalid Entry!")
         ProjectName()
-    
     return
 
+#Checks if Location is valid PVGIS Location
 def LocCheck(Lat, Lon):
     url="https://re.jrc.ec.europa.eu/api/seriescalc?lat="+str(Lat)+"&lon="+str(Lon)+"&outputformat=csv"
     Response = requests.get(url)
@@ -120,6 +123,7 @@ def LocCheck(Lat, Lon):
         open('Temp.csv','wb').write(Response.content)
     return 
 
+#Fectches and inputs info regarding project type
 def TypeCheck(ProjectName):
     with h5py.File(ProjectName + ".hdf5", "a") as f:
         Inputs = f['Inputs']
@@ -139,6 +143,7 @@ def TypeCheck(ProjectName):
             print("Invalid Project Type")
     return
 
+#Fetches and Inputs panel data
 def PanCheck(ProjectName):
     with h5py.File(ProjectName + ".hdf5", "a") as f:
         Pan = f['Pannel Data']
@@ -153,6 +158,8 @@ def PanCheck(ProjectName):
             Pan.attrs[Key] = Values[i]
             i = i + 1
     return
+
+#Processing for standard PVGIS output
 def dftreat():
     df = pd.read_csv("Temp.csv",skiprows=8,skipfooter=9,engine='python')
     T = df["time"].str.split(":", n=1,expand=True)
@@ -161,6 +168,7 @@ def dftreat():
     df.to_csv("Temp.csv")
     return df
 
+#Setsup project file
 def ProjectSetup(PrjName): 
     with h5py.File(PrjName + ".hdf5", "a") as f:
         Project = f.require_group("Project")
@@ -181,7 +189,7 @@ def ProjectSetup(PrjName):
 
         
     
-    IrrData = dftreat()
-    IrrData.to_hdf(PrjName + ".hdf5",key='IrradianceRaw', mode='a')
+    #IrrData = dftreat()
+    #IrrData.to_hdf(PrjName + ".hdf5",key='IrradianceRaw', mode='a')
 
 CreateProject()
