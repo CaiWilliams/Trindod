@@ -30,13 +30,17 @@ def CreateProject():
                 line = line + 1
         os.remove('Temp.csv')
 
-
     ProjectSetup(ProName)
     TypeCheck(ProName)
     PanCheck(ProName)
+    return ProName
 
-    #os.remove('Temp.csv')
-
+def AutoCreateProject(ProName, ProLoc, Lat, Lon, PreCal):
+    ProjectSetup(ProName)
+    LocCheck(Lat, Lon)
+    TypeCheck(ProName)
+    PanChekc(ProName)
+    return
 
 #Qeries for project name
 def ProjectName():
@@ -191,5 +195,3 @@ def ProjectSetup(PrjName):
     
     #IrrData = dftreat()
     #IrrData.to_hdf(PrjName + ".hdf5",key='IrradianceRaw', mode='a')
-
-CreateProject()

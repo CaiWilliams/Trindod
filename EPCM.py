@@ -4,7 +4,7 @@ import pickle
 import h5py
 
 #Calcualtes or Fetches Data relateing to EPC Model
-def Main(ProjName):
+def Epcm(ProjName):
     with h5py.File(ProjName + ".hdf5", "a") as f:
 
         EPC = f['EPC Model']
@@ -44,13 +44,10 @@ def Main(ProjName):
         PCC = PanelData.attrs['Cost, USD/Wp']
         PC = NPG.require_dataset('Panel cost', shape=np.shape(PCC), data=PCC, dtype='f8')
 
-        ERPC = PanelData.attrs['Power density, Wp/sq.m'] * 1.968 * 0.992 
+        ERPC = 410 #PanelData.attrs['Power density, Wp/sq.m'] * 1.968 * 0.992 
         ERP = NPG.require_dataset('Eq. rating of panels', shape=np.shape(ERPC), data=ERPC, dtype='f8')
 
         RNPC = 1000 * (EPC.attrs['PV Size']/ERPC)
-        print(EPC.attrs['PV Size'])
-        print(ERPC)
-        print(RNPC)
         RNP = NPG.require_dataset('Required number of panels', shape=np.shape(RNPC), data=RNPC, dtype='f8')
 
         ICEPC = RNPC * ICPC
@@ -100,5 +97,3 @@ def FetchLocInfo(Name, Prop):
     Rec = Location.loc[:,Prop]
     Rec = Rec.values[0]
     return Rec
-
-Main('21')

@@ -7,7 +7,7 @@ from datetime import timedelta
 from dateutil.relativedelta import *
 
 #Main Run order of CashFlow model
-def Main(ProjName):
+def Cashflow(ProjName):
     BurnInCoef(ProjName)
     InitialS, Initial = Setup(ProjName)
     ProjectLife(Initial, 1, ProjName, InitialS)
@@ -224,14 +224,10 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 PVGen = df["PV Generation"].to_numpy().copy()
                 PPD = Inputs.attrs['PanPriDef']*0.01
                 D = df["Date"]
-                print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
-                print(xnpv(PPD,PVGen,D))
                 Curr['LCOE'] = (np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
 
             CurrS = pd.Series(Curr)
             df = df.append(CurrS,ignore_index=True)
             Prev = Curr.copy()
-        df.to_excel('21.xlsx')
+        df.to_excel(ProjName+'.xlsx')
     return
-
-Main('21')
