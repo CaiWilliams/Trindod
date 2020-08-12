@@ -1,10 +1,11 @@
-from EPCM import *
-from CashFlow import * 
-from Init import * 
+from EPCM import Epcm
+from CashFlow import Cashflow
+from Manual import Main
+
 def Run():
-    ProName = CreateProject()
-    Epcm(ProName)
-    Cashflow(ProName)
+    Name = Main()
+    Epcm(Name)
+    Cashflow(Name)
     return
 
 Run()

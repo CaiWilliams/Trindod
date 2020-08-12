@@ -88,51 +88,14 @@ def UserInput():
     PrintVars()
     change()
     return
-
-def change():
-    Variables = Load("Data/Variables.p")
-    VariablesDict = Load("Data/VariablesDict.p")
-    VariablesUnits = Load("Data/VariablesUnits.p")
-    VariablesIntVals = Load("Data/VariablesIntVals.p")
-    print("")
-    print("Would you like to change any value? Enter number (1-14) to do so. Otherwise just hit enter")
-    x = input()
-    if x == '':
-        x = 0
-    if 15 > int(x)  and int(x) > 0:
-        print(VariablesDict[VariablesIntVals[int(x)]] + ": ")
-        NewVal = input()
-        SrcType = type(Variables[VariablesIntVals[int(x)]])
-        print(SrcType)
-        if SrcType == str:
-            NewVal = str(NewVal)
-        elif SrcType == int:
-            NewVal = int(NewVal)
-        else:
-            NewVal = float(NewVal)
-        print(type(NewVal))
-        Variables[VariablesIntVals[int(x)]] = NewVal
-        Save(Variables,"Data/Variables.p")
-        PrintVars()
-    
-    print("Are you done making changes: Y/N")
-    Conf = input().lower()
-    if Conf == 'n':
-        change()
-    else:
-        Save(Variables,"Data/Variables.p")
-        return
         
 def PrintVars():
     Variables = Load("Data/Variables.p")
     VariablesDict = Load("Data/VariablesDict.p")
     VariablesUnits = Load("Data/VariablesUnits.p")
-    os.system('cls')
+    os.system('clear')
     i = 1
     for Key in VariablesDict:
         print(str(i) +"  "+ VariablesDict[Key] +":  "+ str(Variables[Key]) +" "+ VariablesUnits[Key] )
         i = i + 1
     return
-
-GenVars()
-UserInput()
