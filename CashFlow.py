@@ -225,7 +225,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 PPD = Inputs.attrs['PanPriDef']*0.01
                 D = df["Date"]
                 Curr['LCOE'] = (np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
-
+                #print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
+                #print(xnpv(PPD,PVGen,D))
             CurrS = pd.Series(Curr)
             df = df.append(CurrS,ignore_index=True)
             Prev = Curr.copy()

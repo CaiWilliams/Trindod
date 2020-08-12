@@ -44,7 +44,7 @@ def Epcm(ProjName):
         PCC = PanelData.attrs['Cost, USD/Wp']
         PC = NPG.require_dataset('Panel cost', shape=np.shape(PCC), data=PCC, dtype='f8')
 
-        ERPC = 410 #PanelData.attrs['Power density, Wp/sq.m'] * 1.968 * 0.992 
+        ERPC = PanelData.attrs['Power density, Wp/sq.m'] * 1.968 * 0.992 
         ERP = NPG.require_dataset('Eq. rating of panels', shape=np.shape(ERPC), data=ERPC, dtype='f8')
 
         RNPC = 1000 * (EPC.attrs['PV Size']/ERPC)
@@ -63,7 +63,7 @@ def Epcm(ProjName):
         ICPPC = IVC/ICEPC
         ICPP = NPG.require_dataset('Inverter cost as % of Ciep price', shape=np.shape(ICPPC), data=ICPPC, dtype='f8')
 
-        NAC = ((((1.92 * np.cos(TiltDeg(ProjName))) * 2 + ArraySpaceing(ProjName))* 0.99)/2) * (RNPC)
+        NAC = ((((1.92 * np.cos(np.radians((TiltDeg(ProjName)))) * 2 + ArraySpaceing(ProjName))* 0.99)/2) * (RNPC))
         NA = NPG.require_dataset('New area, sqm', shape=np.shape(NAC), data=NAC, dtype='f8')
 
     return
