@@ -6,18 +6,11 @@ import pandas as pd
 from Init import LocCheck,TypeCheck,PanCheck
 from Variables import GenVars,PrintVars,Load,Save
 
-def Main():
-    Name = ProjectName()
-    Location, Latitude, Longitude, PreCal = ProjectLocation()
-    SaveProject(Name,PreCal)
-    ProjectSetup(Name)
-    GenVars()
-    ChangeVars()
-    TypeCheck(Name)
-    PanCheck(Name)
-    return Name
+colums = ["Project Name", "Pre Calculated", "Location", "Latitude", "Longitude", "Pannel Type", "Pannel Cost Inflation", "Pannel Floor Price",
+            "Inverter Life", "Project Life", "IRR Selection", "Model Start", "Project Type", "Project Location", "Operating Cost Inflation", "Inverter Cost Inflation", "Operating Cost", "Rental Inflation"]
 
-def ProjectName():
+
+def ProjName():
     os.system('clear')
     print("What is the name of the project?")
     name = input()
@@ -32,7 +25,7 @@ def ProjectName():
         ProjectName()
     return
 
-def ProjectLocation():
+def ProjLocation():
     os.system('clear')
     print("Precalculated Location? Y/N")
     J = input().lower()
@@ -76,7 +69,7 @@ def ProjectLocation():
     os.system('clear')
     print("Location Name: " + name)
     print("Location Latitude: " + str(Lat))
-    print("Location Longitude: "+ str(Lon))
+    print("Location Longitude: "+ str(Lon)) 
     print("Location Details Correct? Y/N")
     X = input().lower()
     if X == "y":
@@ -123,42 +116,28 @@ def ChangeVars():
         Save(Variables,"Data/Variables.p")
         return
 
-def SaveProject(Name,PreCal):
-    if PreCal == 'y':
-        with open('Temp.csv') as csvfile:
-            csv_reader = csv.reader(csvfile, delimiter=',')
-            line = 0
-            for row in csv_reader:
-                if line == 0:
-                    Yeild = np.asarray(row)
-                    Yeild = Yeild[1:].astype(float)
-                    with h5py.File(Name + ".hdf5", "a") as f:
-                        Irr = f.require_group("Irradiance")
-                        Irr.require_dataset("Yeild",data=Yeild,shape=np.shape(Yeild),dtype='f8')
-                elif line == 1:
-                    Peak = np.asarray(row)
-                    Peak = Peak[1:].astype(float)
-                    with h5py.File(Name + ".hdf5", "a") as f:
-                        Irr = f.require_group("Irradiance")
-                        Irr.require_dataset("PeakSunHours",data=Peak,shape=np.shape(Peak),dtype='f8')
-                line = line + 1
-        os.remove('Temp.csv')
+def LoadVars():
+    Var = Load("Data/Variables.p")
+    return Var.values()
+
+def ToRunQue(ProjectName="Default", PreCalculated="Y", Location="Fiji", Latitude="-18.112108", Longitude="178.45359", PannelType="1", PannelCostInflation="-1", PannelFloorPrice="0.245", InverterLife="10", 
+            ProjectLife="20", IRRSelection="High Risk", ModelStart="01/01/19", ProjectType="Groundmount PV Array", ProjectLocation="Fiji", OperatingCostInflation="2.1", InverterCostInflation="2.1", OperatingCost="0.5", RentalInflation="2.1"):
+        Project = [ProjectName, PreCalculated, Location, Latitude, Longitude, PannelType, PannelCostInflation, PannelFloorPrice, InverterLife, ProjectLife, IRRSelection, ModelStart,
+                    ProjectType, ProjectLocation, OperatingCostInflation, InverterCostInflation, OperatingCost, RentalInflation]
+        df = pd.DataFrame(columns = colums)
+        Rq = pd.read_csv('RunQue.csv')
+        df.loc[len(Rq.index) + 1] = Project
+        df.to_csv('RunQue.csv',mode='a',header=False)
+        return
+
+def Main():
+    Name = ProjName()
+    Location, Latitude, Longitude, PreCal = ProjLocation()
+    GenVars()
+    ChangeVars()
+    PannelType,PannelCostInflation,PannelFloorPrice,InverterLife,ProjectLife,IRRSelection,ModelStart,ProjectType,ProjectLocation,OperatingCostInflation,InverterCostInflation,OperatingCost,RentalInflation = LoadVars()
+    ToRunQue(Name, PreCal, Location, Latitude, Longitude,PannelType,PannelCostInflation,PannelFloorPrice,InverterLife,ProjectLife,IRRSelection,ModelStart,ProjectType,ProjectLocation,OperatingCostInflation,InverterCostInflation,OperatingCost,RentalInflation)
     return
 
-def ProjectSetup(PrjName): 
-    with h5py.File(PrjName + ".hdf5", "a") as f:
-        Project = f.require_group("Project")
-        Inputs = f.require_group("Inputs")
-        Outputs = f.require_group("Outputs")
-        EPC = f.require_group("EPC Model")
-        PanData = f.require_group("Pannel Data")
-        TecEco = f.require_group("Techno Economics")
-        Loc = f.require_group("Location")
-        Irr = f.require_group("Irradiance")
-        Const = f.require_group("Constants")
-        Deg = f.require_group("Degredation Rate Check")
+Main()
 
-        Variables = Load("Data/Variables.p")
-        for Key in Variables.keys():
-            Inputs.attrs[Key] = Variables[Key]
-        f.close()
