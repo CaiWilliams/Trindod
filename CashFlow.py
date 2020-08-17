@@ -25,7 +25,7 @@ def Setup(ProjName):
 
         Initial = {'Date': StartDate(Inputs.attrs['ModSta']),
         'Project Time': timedelta(days=0),
-        'Panel Lifetime': timedelta(weeks=Panel.attrs['Life'] * 52) ,
+        'Panel Lifetime': timedelta(weeks=float(Panel.attrs['Life']) * 52) ,
         'Inverter Lifetime': timedelta(weeks=float(Inputs.attrs['InvLif'] * 52)),
         'Panel Replacement Year' : False,
         'Peak Sun Hours': IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName),
@@ -55,13 +55,13 @@ def Setup(ProjName):
 
 #Converts date to datetime object
 def StartDate(Date):
-    DTobj = datetime.strptime(Date, '%d/%m/%y')
+    DTobj = datetime.strptime(Date, '%d/%m/%Y')
     return DTobj
 
 #Fetches property for selected month
 def IrrInit(Date,Prop,ProjName):
-    DTobj = datetime.strptime(Date, '%d/%m/%y')
-    Month = DTobj.month - 1
+    DTobj = datetime.strptime(Date, '%d/%m/%Y')
+    Month = DTobj.month
     with h5py.File(ProjName + ".hdf5", "a") as f:
         Irr = f['Irradiance']
         P = np.asarray(Irr[Prop])
@@ -169,7 +169,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             
             Curr['Capital Cost'] = 0
             
-            Curr['Panel Price This Year'] = Panel.attrs['Cost, USD/Wp'] + ((Prev['Panel Price This Year'] - Panel.attrs['Cost, USD/Wp'])*(1 - (Inputs.attrs['PanPriDef'] * 0.01)/12))
+            Curr['Panel Price This Year'] = Panel.attrs['Cost, USD/Wp'] + ((Prev['Panel Price This Year'] - Panel.attrs['Cost, USD/Wp'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/12))
 
             if Curr['Date'] >= PrjEndDate:
                 Curr['Refurbishment Cost (Panels - PV)'] = 0
@@ -222,7 +222,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             else:
                 TCost = df["Total Cost"].to_numpy().copy()
                 PVGen = df["PV Generation"].to_numpy().copy()
-                PPD = Inputs.attrs['PanPriDef']*0.01
+                PPD = Inputs.attrs['Dcr']*0.01
                 D = df["Date"]
                 Curr['LCOE'] = (np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
                 #print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
@@ -230,5 +230,11 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             CurrS = pd.Series(Curr)
             df = df.append(CurrS,ignore_index=True)
             Prev = Curr.copy()
+        Results = pd.read_csv('Results.csv')
+        Heads = list(Results.columns)
+        for Head in Heads:
+            Results = Results.append({Head:Curr[Head]},ignore_index=True)
+        with open('Resutls.csv','a') as f:
+            Results.to_csv(f, mode='a', header=False)
         df.to_excel(ProjName+'.xlsx')
     return
