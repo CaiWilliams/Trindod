@@ -44,7 +44,7 @@ def Model(ProjName,PreCalc,Loc,Lat,Lon,Vars):
     return
 
 def ProjectSetup(ProjName,PreCalc): 
-    with h5py.File(ProjName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Project = f.require_group("Project")
         Inputs = f.require_group("Inputs")
         Outputs = f.require_group("Outputs")

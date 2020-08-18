@@ -21,7 +21,7 @@ def LocCheck(Lat, Lon):
 
 #Fectches and inputs info regarding project type
 def TypeCheck(ProjectName):
-    with h5py.File(ProjectName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjectName) + ".hdf5", "a") as f:
         Inputs = f['Inputs']
         Type = Inputs.attrs['PrjTyp']
         Type = Type.replace(" ","")
@@ -41,14 +41,15 @@ def TypeCheck(ProjectName):
 
 #Fetches and Inputs panel data
 def PanCheck(ProjectName):
-    with h5py.File(ProjectName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjectName) + ".hdf5", "a") as f:
         Pan = f['Pannel Data']
         Inputs = f['Inputs']
         PanTyp = Inputs.attrs['PanTyp']
         df = pd.read_csv("Data/PanelData.csv")
         Info = df.loc[df['Panel ID'] == PanTyp]
+        print(PanTyp)
         Keys = list(Info.columns)
-        Values = Info.values[0]
+        Values = Info.values
         i = 0
         for Key in Keys:
             Pan.attrs[Key] = Values[i]
@@ -77,13 +78,13 @@ def SaveProject(ProjName,PreCal):
                 if line == 0:
                     Yeild = np.asarray(row)
                     Yeild = Yeild[1:].astype(float)
-                    with h5py.File(ProjName + ".hdf5", "a") as f:
+                    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
                         Irr = f.require_group("Irradiance")
                         Irr.require_dataset("Yeild",data=Yeild,shape=np.shape(Yeild),dtype='f8')
                 elif line == 1:
                     Peak = np.asarray(row)
                     Peak = Peak[1:].astype(float)
-                    with h5py.File(ProjName + ".hdf5", "a") as f:
+                    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
                         Irr = f.require_group("Irradiance")
                         Irr.require_dataset("PeakSunHours",data=Peak,shape=np.shape(Peak),dtype='f8')
                 line = line + 1
@@ -91,7 +92,7 @@ def SaveProject(ProjName,PreCal):
     return
 
 def RiskFetch(ProjName):
-    with h5py.File(ProjName + ".hdf5","a") as p:
+    with h5py.File(str(ProjName) + ".hdf5","a") as p:
         Inputs = p['Inputs']
         with open ('Data/RiskData.csv') as f:
             Risk = pd.read_csv(f)

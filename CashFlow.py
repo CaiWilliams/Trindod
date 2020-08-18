@@ -188,7 +188,6 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['Refurbishment Cost (Panels - Other)'] = 0
             else:
                 if Curr['Panel Replacement Year'] == True:
-                    print(np.abs(EPC['New Price']['New price']))
                     Curr['Refurbishment Cost (Panels - Other)'] = (np.abs(EPC['New Price']['New price']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
                     Curr['Cumilative Sun Hours'] = Irr(Curr['Date'],'PeakSunHours',ProjName)
                     Curr['Burn in (absolute)'] = (Panel.attrs['a'] * Irr(Curr['Date'],'PeakSunHours',ProjName) * Irr(Curr['Date'],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(Curr['Date'],'PeakSunHours',ProjName) + 1)
@@ -247,8 +246,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 #print(PPD)
                 #print(TCost)
                 #print(D)
-                print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
-                print(xnpv(PPD,PVGen,D))
+                #print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
+                #print(xnpv(PPD,PVGen,D))
             CurrS = pd.Series(Curr)
             df = df.append(CurrS,ignore_index=True)
             Prev = Curr.copy()
