@@ -24,7 +24,7 @@ def Epcm(ProjName):
         PEPC = OPC - EPC.attrs['PV Panels']
         PEP = OPG.require_dataset('Price excluding panels', shape=np.shape(PEPC), data=PEPC, dtype='f8')
 
-        PSC = EPC.attrs['Panel size']
+        PSC = 410 #EPC.attrs['Panel size']
         PS = OPG.require_dataset('Panel size', shape=np.shape(PSC), data=PSC, dtype='f8')
 
         NPC  = 1000 * (EPC.attrs['PV Size'] / PSC)
