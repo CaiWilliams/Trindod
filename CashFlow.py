@@ -179,7 +179,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['Refurbishment Cost (Panels - PV)'] = 0
             else:
                 if Curr['Panel Replacement Year'] == True:
-                    Curr['Refurbishment Cost (Panels - PV)'] = 1000 * Initial['Peak Capacity'] * Curr['Panel Price This Year']
+                    Curr['Refurbishment Cost (Panels - PV)'] = 1000 * EPC.attrs['PV Size'] * Curr['Panel Price This Year']
                 else:
                     Curr['Panel Replacement Year'] = 0
                     Curr['Refurbishment Cost (Panels - PV)'] = 0
@@ -188,7 +188,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['Refurbishment Cost (Panels - Other)'] = 0
             else:
                 if Curr['Panel Replacement Year'] == True:
-                    Curr['Refurbishment Cost (Panels - Other)'] = EPC['New Price']['New price'] * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
+                    print(np.abs(EPC['New Price']['New price']))
+                    Curr['Refurbishment Cost (Panels - Other)'] = (np.abs(EPC['New Price']['New price']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
                     Curr['Cumilative Sun Hours'] = Irr(Curr['Date'],'PeakSunHours',ProjName)
                     Curr['Burn in (absolute)'] = (Panel.attrs['a'] * Irr(Curr['Date'],'PeakSunHours',ProjName) * Irr(Curr['Date'],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(Curr['Date'],'PeakSunHours',ProjName) + 1)
                     Curr['Long Term Degredation'] = (Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']
@@ -200,7 +201,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                         Curr['Panel State of Health'] = Curr['Burn in (absolute)']
                         Curr['Peak Capacity'] = EPC.attrs['PV Size'] * Curr['Burn in (absolute)']
                         
-                        Initial['PV Generation'] = Initial['Monthly Yeild'] * np.average([Prev['Peak Capacity'], Curr['Peak Capacity']])
+                    Curr['PV Generation'] = Initial['Monthly Yeild'] * np.average([Prev['Peak Capacity'], Curr['Peak Capacity']])
                 else:
                     Curr['Panel Replacement Year'] = 0
                     Curr['Refurbishment Cost (Panels - Other)'] = 0
