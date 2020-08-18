@@ -46,7 +46,7 @@ def PanCheck(ProjectName):
         Inputs = f['Inputs']
         PanTyp = Inputs.attrs['PanTyp']
         df = pd.read_csv("Data/PanelData.csv")
-        Info = df.loc[df['Panel ID'] == str(PanTyp)]
+        Info = df.loc[df['Panel ID'] == PanTyp]
         Keys = list(Info.columns)
         Values = Info.values[0]
         i = 0
@@ -66,4 +66,36 @@ def dftreat():
 
 
     #IrrData = dftreat()
-    #IrrData.to_hdf(PrjName + ".hdf5",key='IrradianceRaw', mode='a')
+    #IrrData.to_hdf(PrjName + ".hdf5",key='IrradianceRaw', mode='a')  
+
+def SaveProject(ProjName,PreCal):
+    if PreCal == 'y':
+        with open('Temp.csv') as csvfile:
+            csv_reader = csv.reader(csvfile, delimiter=',')
+            line = 0
+            for row in csv_reader:
+                if line == 0:
+                    Yeild = np.asarray(row)
+                    Yeild = Yeild[1:].astype(float)
+                    with h5py.File(ProjName + ".hdf5", "a") as f:
+                        Irr = f.require_group("Irradiance")
+                        Irr.require_dataset("Yeild",data=Yeild,shape=np.shape(Yeild),dtype='f8')
+                elif line == 1:
+                    Peak = np.asarray(row)
+                    Peak = Peak[1:].astype(float)
+                    with h5py.File(ProjName + ".hdf5", "a") as f:
+                        Irr = f.require_group("Irradiance")
+                        Irr.require_dataset("PeakSunHours",data=Peak,shape=np.shape(Peak),dtype='f8')
+                line = line + 1
+        os.remove('Temp.csv')
+    return
+
+def RiskFetch(ProjName):
+    with h5py.File(ProjName + ".hdf5","a") as p:
+        Inputs = p['Inputs']
+        with open ('Data/RiskData.csv') as f:
+            Risk = pd.read_csv(f)
+            SRisk = Risk.loc[Risk['Scenario'] == Inputs.attrs['Irr']]
+            DCR = SRisk['IRR'].values
+            Inputs.attrs['Dcr'] = DCR
+    return

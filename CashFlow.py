@@ -49,6 +49,7 @@ def Setup(ProjName):
         'Cost Check': np.abs((EPC['New Price']['Installation cost exc. panels'] + 1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp'])/EPC.attrs['PV Size'])/1000,
         'LCOE':0,
         }
+    print(Panel.attrs['Cost, USD/Wp'])
     InitialS = pd.Series(Initial)
     df = df.append(InitialS, ignore_index=True)
     return df, Initial
@@ -231,10 +232,13 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             df = df.append(CurrS,ignore_index=True)
             Prev = Curr.copy()
         Results = pd.read_csv('Results.csv')
+        Vals = np.empty(0)
         Heads = list(Results.columns)
         for Head in Heads:
-            Results = Results.append({Head:Curr[Head]},ignore_index=True)
-        with open('Resutls.csv','a') as f:
-            Results.to_csv(f, mode='a', header=False)
+            Val = Curr[Head][0]
+            Vals = np.append(Vals,Val)
+        Vals = pd.Series(Vals)
+        with open('Results.csv','a') as f:
+            Vals.to_csv(f, mode='a', header=False, index=False)
         df.to_excel(ProjName+'.xlsx')
     return

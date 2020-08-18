@@ -1,5 +1,5 @@
 ProjectName,PreCalculated,Location,Latitude,Longitude,PanTyp,PanCosInf,PanFlrPri,InvLif,PrjLif,Irr,ModSta,PrjTyp,PrjLoc,OprCosInf,InvCosInf,OprCos,RenInf
-Closed Triangle 1,y,Fiji,-18.112108,178.45359,1,-1,0.01,10,20,High Risk,01/05/2019,Groundmount PV Array,Fiji,2.1,2.1,0.01,2.1
+Closed Triangle 1,y,Fiji,-18.112108,178.45359,2,-1,0.01,10,20,High Risk,01/05/2019,Groundmount PV Array,Fiji,2.1,2.1,0.01,2.1
 Closed Triangle 2,y,Fiji,-18.112108,178.45359,2,-1,0.02,10,20,High Risk,01/05/2019,Groundmount PV Array,Fiji,2.1,2.1,0.01,2.1
 Closed Triangle 3,y,Fiji,-18.112108,178.45359,3,-1,0.03,10,20,High Risk,01/05/2019,Groundmount PV Array,Fiji,2.1,2.1,0.01,2.1
 Closed Triangle 4,y,Fiji,-18.112108,178.45359,4,-1,0.04,10,20,High Risk,01/05/2019,Groundmount PV Array,Fiji,2.1,2.1,0.01,2.1
