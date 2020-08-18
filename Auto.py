@@ -20,7 +20,7 @@ def LoadQue(Que):
 
 def RunItem(RQ):
     RQD = RQ.drop(['ProjectName','PreCalculated','Location','Latitude','Longitude'],axis=1)
-    n = 1
+    n = 0
     for row in RQD.itertuples(index=False):
         Vars = row._asdict()
         ProjName = RQ.loc[n]['ProjectName']

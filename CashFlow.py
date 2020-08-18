@@ -44,15 +44,15 @@ def Setup(ProjName):
         'Panel Price This Year': Panel.attrs['Cost, USD/Wp'],
         'Refurbishment Cost (Inverter)':0,
         'Annual O&M Cost': (1000 * EPC.attrs['PV Size'] * 0.01) / 12,
-        'Land Rental': Inputs.attrs['RenCos'] * EPC.attrs['System area'] / 12,
-        'Total Cost': ((1000 * EPC.attrs['PV Size'] * 0.01) / 12) + (Inputs.attrs['RenCos'] * EPC.attrs['System area'] / 12),
+        'Land Rental': Inputs.attrs['RenCos'] * EPC['New Price']['New area, sqm'] / 12,
+        'Total Cost': ((1000 * EPC.attrs['PV Size'] * 0.01) / 12) + (Inputs.attrs['RenCos'] * EPC['New Price']['New area, sqm'] / 12),
         'Cost Check': np.abs((EPC['New Price']['Installation cost exc. panels'] + 1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp'])/EPC.attrs['PV Size'])/1000,
         'LCOE':0,
         }
         if Initial['Panel State of Health'] > 1:
             Initial['Panel State of Health'] = Initial['Burn in (absolute)']
             Initial['Peak Capacity'] = EPC.attrs['PV Size'] * Initial['Panel State of Health']
-            Initial['PV Generation'] = Initial['Monthly Yeild'] * (EPC.attrs['PV Size'] + Initial['Peak Capacity'])/2
+            Initial['PV Generation'] = Initial['Monthly Yeild'] * np.average([EPC.attrs['PV Size'], Initial['Peak Capacity']])
     InitialS = pd.Series(Initial)
     df = df.append(InitialS, ignore_index=True)
     return df, Initial
@@ -199,7 +199,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                     if Curr['Panel State of Health'] > 1:
                         Curr['Panel State of Health'] = Curr['Burn in (absolute)']
                         Curr['Peak Capacity'] = EPC.attrs['PV Size'] * Curr['Burn in (absolute)']
-                        Initial['PV Generation'] = Initial['Monthly Yeild'] * (Prev['Peak Capacity'] + Curr['Peak Capacity'])/2
+                        
+                        Initial['PV Generation'] = Initial['Monthly Yeild'] * np.average([Prev['Peak Capacity'], Curr['Peak Capacity']])
                 else:
                     Curr['Panel Replacement Year'] = 0
                     Curr['Refurbishment Cost (Panels - Other)'] = 0
@@ -242,8 +243,11 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 PPD = Inputs.attrs['Dcr']*0.01
                 D = df["Date"]
                 Curr['LCOE'] = (np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
-                #print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
-                #print(xnpv(PPD,PVGen,D))
+                #print(PPD)
+                #print(TCost)
+                #print(D)
+                print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
+                print(xnpv(PPD,PVGen,D))
             CurrS = pd.Series(Curr)
             df = df.append(CurrS,ignore_index=True)
             Prev = Curr.copy()
