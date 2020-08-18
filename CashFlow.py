@@ -49,7 +49,7 @@ def Setup(ProjName):
         'Cost Check': np.abs((EPC['New Price']['Installation cost exc. panels'] + 1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp'])/EPC.attrs['PV Size'])/1000,
         'LCOE':0,
         }
-    print(Panel.attrs['Cost, USD/Wp'])
+        print(Panel.attrs['Cost, USD/Wp'])
     InitialS = pd.Series(Initial)
     df = df.append(InitialS, ignore_index=True)
     return df, Initial
@@ -185,6 +185,14 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             else:
                 if Curr['Panel Replacement Year'] == True:
                     Curr['Refurbishment Cost (Panels - Other)'] = EPC['New Price']['New price'] * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
+                    Curr['Cumilative Sun Hours'] = IrrInit(Curr['Date'],'PeakSunHours',ProjName)
+                    Curr['Burn in (absolute)'] = (Panel.attrs['a'] * IrrInit(Curr['Date'],'PeakSunHours',ProjName) * IrrInit(Curr['Date'],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * IrrInit(Curr['Date'],'PeakSunHours',ProjName) + 1)
+                    Curr['Long Term Degredation'] = (Panel.attrs['m'] * IrrInit(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']
+                    Curr['Long Term Degredation (abs after burn in)'] = ((Panel.attrs['m'] * IrrInit(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)
+                    Curr['Panel State of Health'] = ((Panel.attrs['m'] * IrrInit(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)
+                    Curr['Peak Capacity'] = EPC.attrs['PV Size'] * (1 - (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01))
+                    Curr['PV Generation'] = IrrInit(Curr['Date'],'Yeild',ProjName) * ((EPC.attrs['PV Size'])+(EPC.attrs['PV Size'] * (1 - (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01))))/2
+
                 else:
                     Curr['Panel Replacement Year'] = 0
 
@@ -235,7 +243,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         Vals = np.empty(0)
         Heads = list(Results.columns)
         for Head in Heads:
-            Val = Curr[Head][0]
+            Val = Curr[Head]
             Vals = np.append(Vals,Val)
         Vals = pd.Series(Vals)
         with open('Results.csv','a') as f:

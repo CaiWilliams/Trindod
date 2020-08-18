@@ -97,5 +97,5 @@ def RiskFetch(ProjName):
             Risk = pd.read_csv(f)
             SRisk = Risk.loc[Risk['Scenario'] == Inputs.attrs['Irr']]
             DCR = SRisk['IRR'].values
-            Inputs.attrs['Dcr'] = DCR
+            Inputs.attrs['Dcr'] = DCR[0]
     return
