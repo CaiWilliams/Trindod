@@ -16,12 +16,13 @@ def Cashflow(ProjName):
 #Setsup cash flow model with initial data
 def Setup(ProjName):
     CFC = ['Date','Project Year','Panel Lifetime','Inverter Lifetime','Panel Replacement Year','Peak Sun Hours','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Rental','Total Cost','Cost Check','LCOE']
-    df = pd.DataFrame(columns=CFC)
-    with h5py.File(ProjName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
 
         Inputs = f['Inputs']
         EPC = f['EPC Model']
         Panel = f['Pannel Data']
+
+        df = pd.DataFrame(columns=CFC)
 
         Initial = {'Date': StartDate(Inputs.attrs['ModSta']),
         'Project Time': timedelta(days=0),
@@ -32,27 +33,27 @@ def Setup(ProjName):
         'Cumilative Sun Hours': IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName),
         'Burn in (absolute)':(Panel.attrs['a'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName) * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName) + 1),
         'Long Term Degredation':(Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c'],
-        'Long Term Degredation (abs after burn in)':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01),
-        'Panel State of Health':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01),
-        'Peak Capacity': EPC.attrs['PV Size'] * (1 - (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)),
+        'Long Term Degredation (abs after burn in)':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01),
+        'Panel State of Health':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01),
+        'Peak Capacity': EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)),
         'Monthly Yeild': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName),
-        'PV Generation': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName) * ((EPC.attrs['PV Size'])+(EPC.attrs['PV Size'] * (1 - (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01))))/2,
+        'PV Generation': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName) * ((EPC.attrs['PVSize'])+(EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))))/2,
         'Capital Cost': 0,#EPC['New Price']['Installation cost exc. panels'] + (1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp']),
         'Refurbishment Cost (Panels - PV)':0,
         'Refurbishment Cost (Panels - Other)':0,
         'Refurbishment Cost (Panels)':0,
-        'Panel Price This Year': Panel.attrs['Cost, USD/Wp'],
+        'Panel Price This Year': Panel.attrs['Cost'],
         'Refurbishment Cost (Inverter)':0,
-        'Annual O&M Cost': (1000 * EPC.attrs['PV Size'] * 0.01) / 12,
-        'Land Rental': Inputs.attrs['RenCos'] * EPC['New Price']['New area, sqm'] / 12,
-        'Total Cost': ((1000 * EPC.attrs['PV Size'] * 0.01) / 12) + (Inputs.attrs['RenCos'] * EPC['New Price']['New area, sqm'] / 12),
-        'Cost Check': np.abs((EPC['New Price']['Installation cost exc. panels'] + 1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp'])/EPC.attrs['PV Size'])/1000,
+        'Annual O&M Cost': (1000 * EPC.attrs['PVSize'] * 0.01) / 12,
+        'Land Rental': Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / 12,
+        'Total Cost': ((1000 * EPC.attrs['PVSize'] * 0.01) / 12) + (Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / 12),
+        'Cost Check': np.abs((EPC['New Price']['InstallationCostExcPanels'] + 1000 * EPC.attrs['PVSize'] * Panel.attrs['Cost'])/EPC.attrs['PVSize'])/1000,
         'LCOE':0,
         }
         if Initial['Panel State of Health'] > 1:
             Initial['Panel State of Health'] = Initial['Burn in (absolute)']
-            Initial['Peak Capacity'] = EPC.attrs['PV Size'] * Initial['Panel State of Health']
-            Initial['PV Generation'] = Initial['Monthly Yeild'] * np.average([EPC.attrs['PV Size'], Initial['Peak Capacity']])
+            Initial['Peak Capacity'] = EPC.attrs['PVSize'] * Initial['Panel State of Health']
+            Initial['PV Generation'] = Initial['Monthly Yeild'] * np.average([EPC.attrs['PVSize'], Initial['Peak Capacity']])
     InitialS = pd.Series(Initial)
     df = df.append(InitialS, ignore_index=True)
     return df, Initial
@@ -66,7 +67,7 @@ def StartDate(Date):
 def IrrInit(Date,Prop,ProjName):
     DTobj = datetime.strptime(Date, '%d/%m/%Y')
     Month = DTobj.month - 1
-    with h5py.File(ProjName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Irr = f['Irradiance']
         P = np.asarray(Irr[Prop])
     return P[Month]
@@ -75,27 +76,27 @@ def IrrInit(Date,Prop,ProjName):
 #Fetches property for selected month
 def Irr(Date,Prop,ProjName):
     Month = Date.month - 1
-    with h5py.File(ProjName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Irr = f['Irradiance']
         P = np.asarray(Irr[Prop])
     return P[Month]
 
 #Calculates and Inputs Burn-in coefficients
 def BurnInCoef(ProjName):
-    with h5py.File(ProjName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Panel = f['Pannel Data']
         Irr = f['Irradiance']
-        DeltaD = Panel.attrs['Burn in %, Δd']
+        DeltaD = Panel.attrs['Burn-in']
         DeltaD = DeltaD.replace("%", "")
         DeltaD = float(DeltaD) * 0.01
 
-        dL = Panel.attrs['Long-term Degradation, dL, %/year']
+        dL = Panel.attrs['Long-termDegradation']
         dL = dL.replace("%", "")
         dL = float(dL) * 0.01
         dL = -dL /np.sum(Irr['PeakSunHours'])
-        Panel.attrs['dL, %/hr'] = dL
+        Panel.attrs['dL'] = dL
         
-        ST = Panel.attrs['Burn in peak sun hours, St, hours']
+        ST = Panel.attrs['Burn-inPeakSunHours']
 
 
         a = (DeltaD - dL * ST)/(np.power(ST,2))
@@ -129,7 +130,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
     Curr = Initial.copy()
     df = Data
     CFC = ['Date','Project Year','Panel Lifetime','Inverter Lifetime','Panel Replacement Year','Peak Sun Hours','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Rental','Total Cost','Cost Check','LCOE']
-    with h5py.File(ProjName + ".hdf5", "a") as f:
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Inputs = f['Inputs']
         Panel = f['Pannel Data']
         EPC = f['EPC Model']
@@ -152,17 +153,17 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             Curr['Cumilative Sun Hours'] = Prev['Cumilative Sun Hours'] + Curr['Peak Sun Hours']
             Curr['Burn in (absolute)'] = (Panel.attrs['a'] * Curr['Cumilative Sun Hours'] * Curr['Cumilative Sun Hours']) + (Panel.attrs['b'] * Curr['Cumilative Sun Hours'] + 1)
             Curr['Long Term Degredation'] = (Panel.attrs['m'] * Curr['Cumilative Sun Hours']) + Panel.attrs['c']
-            Curr['Long Term Degredation (abs after burn in)'] = Curr['Long Term Degredation'] + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)
+            Curr['Long Term Degredation (abs after burn in)'] = Curr['Long Term Degredation'] + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
 
-            if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn in peak sun hours, St, hours']:
+            if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn-inPeakSunHours']:
                 Curr['Panel State of Health'] = Curr['Long Term Degredation (abs after burn in)']
             else:
                 Curr['Panel State of Health'] = Curr['Burn in (absolute)']
             
-            if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn in peak sun hours, St, hours']:
-                Curr['Peak Capacity'] = float(EPC.attrs['PV Size']) * (1 - float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01) * float(Curr['Panel State of Health'])
+            if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn-inPeakSunHours']:
+                Curr['Peak Capacity'] = float(EPC.attrs['PVSize']) * (1 - float(Panel.attrs['Burn-in'].strip('%'))*0.01) * float(Curr['Panel State of Health'])
             else:
-                Curr['Peak Capacity'] = EPC.attrs['PV Size'] * Curr['Panel State of Health']
+                Curr['Peak Capacity'] = EPC.attrs['PVSize'] * Curr['Panel State of Health']
 
             Curr['Monthly Yeild'] = Irr(Curr['Date'],'Yeild',ProjName)
 
@@ -173,13 +174,13 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             
             Curr['Capital Cost'] = 0
             
-            Curr['Panel Price This Year'] = Panel.attrs['Cost, USD/Wp'] + ((Prev['Panel Price This Year'] - Panel.attrs['Cost, USD/Wp'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/12))
+            Curr['Panel Price This Year'] = Panel.attrs['Cost'] + ((Prev['Panel Price This Year'] - Panel.attrs['Cost'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/12))
 
             if Curr['Date'] >= PrjEndDate:
                 Curr['Refurbishment Cost (Panels - PV)'] = 0
             else:
                 if Curr['Panel Replacement Year'] == True:
-                    Curr['Refurbishment Cost (Panels - PV)'] = 1000 * EPC.attrs['PV Size'] * Curr['Panel Price This Year']
+                    Curr['Refurbishment Cost (Panels - PV)'] = 1000 * EPC.attrs['PVSize'] * Curr['Panel Price This Year']
                 else:
                     Curr['Panel Replacement Year'] = 0
                     Curr['Refurbishment Cost (Panels - PV)'] = 0
@@ -188,17 +189,17 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['Refurbishment Cost (Panels - Other)'] = 0
             else:
                 if Curr['Panel Replacement Year'] == True:
-                    Curr['Refurbishment Cost (Panels - Other)'] = (np.abs(EPC['New Price']['New price']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
+                    Curr['Refurbishment Cost (Panels - Other)'] = (np.abs(EPC['New Price']['NewPrice']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
                     Curr['Cumilative Sun Hours'] = Irr(Curr['Date'],'PeakSunHours',ProjName)
                     Curr['Burn in (absolute)'] = (Panel.attrs['a'] * Irr(Curr['Date'],'PeakSunHours',ProjName) * Irr(Curr['Date'],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(Curr['Date'],'PeakSunHours',ProjName) + 1)
                     Curr['Long Term Degredation'] = (Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']
-                    Curr['Long Term Degredation (abs after burn in)'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)
-                    Curr['Panel State of Health'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)
-                    Curr['Peak Capacity'] = EPC.attrs['PV Size'] * (1 - (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01))
-                    Curr['PV Generation'] = Irr(Curr['Date'],'Yeild',ProjName) * ((EPC.attrs['PV Size'])+(EPC.attrs['PV Size'] * (1 - (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn in %, Δd'].strip('%'))*0.01))))/2
+                    Curr['Long Term Degredation (abs after burn in)'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
+                    Curr['Panel State of Health'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
+                    Curr['Peak Capacity'] = EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))
+                    Curr['PV Generation'] = Irr(Curr['Date'],'Yeild',ProjName) * ((EPC.attrs['PVSize'])+(EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))))/2
                     if Curr['Panel State of Health'] > 1:
                         Curr['Panel State of Health'] = Curr['Burn in (absolute)']
-                        Curr['Peak Capacity'] = EPC.attrs['PV Size'] * Curr['Burn in (absolute)']
+                        Curr['Peak Capacity'] = EPC.attrs['PVSize'] * Curr['Burn in (absolute)']
                         
                     Curr['PV Generation'] = Initial['Monthly Yeild'] * np.average([Prev['Peak Capacity'], Curr['Peak Capacity']])
                 else:
@@ -212,7 +213,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             else:
                 if Curr['Inverter Lifetime'].days < 0: 
                     Curr['Inverter Lifetime'] = Initial['Inverter Lifetime']
-                    Curr['Refurbishment Cost (Inverter)'] = EPC['Original Price']['Inverter cost'] * np.power((1 + (Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
+                    Curr['Refurbishment Cost (Inverter)'] = EPC['Original Price']['InverterCost'] * np.power((1 + (Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
                 else:
                     Curr['Refurbishment Cost (Inverter)'] = 0
 
@@ -242,7 +243,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 PVGen = df["PV Generation"].to_numpy().copy()
                 PPD = Inputs.attrs['Dcr']*0.01
                 D = df["Date"]
-                Curr['LCOE'] = (np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
+                Curr['LCOE'] = (np.abs(EPC['New Price']['NewPrice']) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
                 #print(PPD)
                 #print(TCost)
                 #print(D)
@@ -250,15 +251,64 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 #print(xnpv(PPD,PVGen,D))
             CurrS = pd.Series(Curr)
             df = df.append(CurrS,ignore_index=True)
+        
             Prev = Curr.copy()
-        Results = pd.read_csv('Results.csv')
-        Vals = np.empty(0)
-        Heads = list(Results.columns)
-        for Head in Heads:
-            Val = Curr[Head]
-            Vals = np.append(Vals,Val)
-        Vals = pd.Series(Vals)
-        with open('Results.csv','a') as f:
-            Vals.to_csv(f, mode='a', header=False, index=False)
-        df.to_excel(ProjName+'.xlsx')
+        Results(ProjName, Curr)
+        df.to_excel(str(ProjName)+'.xlsx')
     return
+
+def Results(ProjName,Data):
+    Headers = {
+        'Outputs': ResOutputs,
+        'Inputs':  ResInputs,
+        'EPCM': ResEPCM,
+        'EPCMOP':  ResEPCMOP,
+        'EPCMNP':  ResEPCMNP,
+        'Panel': ResPanel,
+    }
+    Results = pd.read_csv('Results.csv')
+    Vals = np.empty(0)
+    Heads = list(Results.columns)
+    for Head in Heads:
+        Head = Head.split('.')
+        ResFetch = Headers.get(Head[0])
+        Val = ResFetch(Head[1],ProjName,Data)
+        Vals = np.append(Vals,Val)
+    Vals = pd.DataFrame(Vals,Heads).T
+    with open('Results.csv','a') as f:
+        Vals.to_csv(f, mode='a', header=False, index=False)
+    return
+
+def ResOutputs(Prop,ProjName,Data):
+    Val = Data[Prop]
+    return Val
+
+def ResInputs(Prop,ProjName,Data):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Val = Inputs.attrs[Prop]
+    return Val
+
+def ResEPCM(Prop,ProjName,Data):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        EPCM = f['EPC Model']
+        Val = EPCM.attrs[Prop]
+    return Val
+
+def ResEPCMOP(Prop,ProjName,Data):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        EPCM = f['EPC Model']
+        Val = EPCM['Original Price'][Prop]
+    return Val 
+
+def ResEPCMNP(Prop,ProjName,Data):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        EPCM = f['EPC Model']
+        Val = EPCM['New Price'][Prop]
+    return Val
+
+def ResPanel(Prop,ProjName,Data):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Panel = f['Pannel Data']
+        Val = Panel.attrs[Prop]
+    return Val

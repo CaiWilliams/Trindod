@@ -1,2 +1,2 @@
-Project Name,PV Size,System area,Project yield,Maximum area for panels,Panel size,Location,Design,Construction,Framing,DC cabling,AC cabling,Civil work (Panels),Civil work (general),PV Panels,Fixed project costs,Freight (Panels),Freight (other),Inverters,Controls
+ProjectName,PVSize,SystemArea,ProjectYield,MaximumAreaForPanels,PanelSize,Location,Design,Construction,Framing,DCcabling,ACcabling,CivilWork(Panels),CivilWork(general),PVPanels,FixedProjectCosts,Freight(Panels),Freight(other),Inverters,Controls
 Commercial Rooftop,4406,23,247.67550,997.69126,,400,New Zealand (South Island),113030.2882,1047581.93,223144.1025,233888.683,394320.4316,88717.19766,105259.5523,1354840.096,58542.75,81503.07094,54335.38063,196945.8593,10986.32737

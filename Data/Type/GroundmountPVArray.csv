@@ -1,2 +1,2 @@
-Project Name,PV Size,System area,Project yield,Maximum area for panels,Panel size,Location,Design,Construction,Framing,DC cabling,AC cabling,Civil work (Panels),Civil work (general),PV Panels,Fixed project costs,Freight (Panels),Freight (other),Inverters,Controls
+ProjectName,PVSize,SystemArea,ProjectYield,MaximumAreaForPanels,PanelSize,Location,Design,Construction,Framing,DCcabling,ACcabling,CivilWork(Panels),CivilWork(general),PVPanels,FixedProjectCosts,Freight(Panels),Freight(other),Inverters,Controls
 Groundmount PV Array,5492.475,59514.577371,1196.506133853,,400,Fiji,91197.36842,759283.5526,428734.2105,84723.02632,161099.3421,139901.3158,175494.7368,1356557.895,113937.5,90360.74033,60240.78947,519094.7368,55698.68421

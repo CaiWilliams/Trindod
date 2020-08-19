@@ -1,4 +1,4 @@
-﻿Panel ID,Type,Life,"Burn in %, Δd","Long-term Degradation, dL, %/year","Burn in peak sun hours, St, hours","Cost, USD/Wp","Power density, Wp/sq.m","Energy efficiency, %"
+﻿PanelID,Type,Life,Burn-in,Long-termDegradation,Burn-inPeakSunHours,Cost,PowerDensity,EnergyEfficiency
 1,Test Panel 1,25.000000000000,2.00%,0.70%,10.000000000000,0.245000000000,204.891161814844,20.90726140967800%
 Andrew,Ideal panel,25.000000000000,0.00%,0.70%,0.000000000000,0.245000000000,204.891161814844,20.90726140967800%
 2,Test Panel 2,35.000000000000,1.50%,0.70%,10.000000000000,0.246000000000,210.013440860215,21.42994294491990%

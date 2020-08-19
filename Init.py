@@ -46,10 +46,9 @@ def PanCheck(ProjectName):
         Inputs = f['Inputs']
         PanTyp = Inputs.attrs['PanTyp']
         df = pd.read_csv("Data/PanelData.csv")
-        Info = df.loc[df['Panel ID'] == PanTyp]
-        print(PanTyp)
+        Info = df.loc[df['PanelID'] == str(PanTyp)]
         Keys = list(Info.columns)
-        Values = Info.values
+        Values = Info.values[0]
         i = 0
         for Key in Keys:
             Pan.attrs[Key] = Values[i]
