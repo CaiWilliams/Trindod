@@ -27,7 +27,7 @@ def TypeCheck(ProjectName):
         Type = Type.replace(" ","")
         Type = Type + ".csv"
         if Type in os.listdir('Data/Type/'):
-            df = pd.read_csv("Data/Type/" + Type)
+            df = pd.read_csv("Data/Type/" + Type,float_precision='round_trip')
             Keys =  list(df.columns)
             Values = df.values[0]
             i = 0 
@@ -45,7 +45,7 @@ def PanCheck(ProjectName):
         Pan = f['Pannel Data']
         Inputs = f['Inputs']
         PanTyp = Inputs.attrs['PanTyp']
-        df = pd.read_csv("Data/PanelData.csv")
+        df = pd.read_csv("Data/PanelData.csv",float_precision='round_trip')
         Info = df.loc[df['PanelID'] == str(PanTyp)]
         Keys = list(Info.columns)
         Values = Info.values[0]

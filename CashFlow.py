@@ -23,8 +23,8 @@ def Setup(ProjName):
         Panel = f['Pannel Data']
 
         df = pd.DataFrame(columns=CFC)
-
-        Initial = {'Date': StartDate(Inputs.attrs['ModSta']),
+        
+        Initial = {'Date': datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y'),
         'Project Time': timedelta(days=0),
         'Panel Lifetime': timedelta(weeks=float(Panel.attrs['Life']) * 52) ,
         'Inverter Lifetime': timedelta(weeks=float(Inputs.attrs['InvLif'] * 52)),
@@ -54,13 +54,22 @@ def Setup(ProjName):
             Initial['Panel State of Health'] = Initial['Burn in (absolute)']
             Initial['Peak Capacity'] = EPC.attrs['PVSize'] * Initial['Panel State of Health']
             Initial['PV Generation'] = Initial['Monthly Yeild'] * np.average([EPC.attrs['PVSize'], Initial['Peak Capacity']])
-    InitialS = pd.Series(Initial)
-    df = df.append(InitialS, ignore_index=True)
-    return df, Initial
+        InitialS = pd.Series(Initial)
+        df = df.append(InitialS, ignore_index=True)
+        dfA = df.to_numpy()
+        z = np.zeros([1,(len(CFC)+1)])
+        I=0
+        while I < (Inputs.attrs['PrjLif']*12):
+            dfA = np.append(dfA, z,axis=0)
+            I = I + 1
+        a = pd.DataFrame(dfA)
+        a.to_csv('test.csv')
+    return dfA, Initial
 
 #Converts date to datetime object
 def StartDate(Date):
     DTobj = datetime.strptime(Date, '%d/%m/%Y')
+    print(DTobj)
     return DTobj
 
 #Fetches property for selected month
@@ -121,21 +130,23 @@ def MonthsTODatetime(X):
 def xnpv(rate, values, dates):
     if rate <= -1.0:
         return float('inf')
-    d0 = dates[0]    # or min(dates)
-    return sum([ vi / (1.0 + rate)**((di - d0).days / 365.0) for vi, di in zip(values, dates)])
+    d0 = dates[0]
+    return sum([ vi / (1.0 + rate)**(((di - d0).days) / 365) for vi, di in zip(values, dates)])
 
 #Main loop of the Cash flow model
 def ProjectLife(Initial, TimeRes, ProjName, Data):
     Prev = Initial
     Curr = Initial.copy()
     df = Data
-    CFC = ['Date','Project Year','Panel Lifetime','Inverter Lifetime','Panel Replacement Year','Peak Sun Hours','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Rental','Total Cost','Cost Check','LCOE']
-    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+    df[0,0] = df[0,0].to_pydatetime()
+    CFC = ['Date','Project Year','Panel Lifetime','Inverter Lifetime','Panel Replacement Year','Peak Sun Hours','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Rental','Total Cost','Cost Check','LCOE','Project Time']
+    with h5py.File(str(ProjName) + ".hdf5", "r+") as f:
         Inputs = f['Inputs']
         Panel = f['Pannel Data']
         EPC = f['EPC Model']
         PrjLif = Inputs.attrs['PrjLif'] * 365
         PrjEndDate = Initial['Date'] + timedelta(days=float(PrjLif))
+        i = 1
         while Curr['Date'] < PrjEndDate:
             Curr['Date'] = Prev['Date'] + relativedelta(months=+1)
             Curr['Project Year'] = np.abs(Initial['Date'] - Curr['Date']).days // 365
@@ -213,7 +224,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             else:
                 if Curr['Inverter Lifetime'].days < 0: 
                     Curr['Inverter Lifetime'] = Initial['Inverter Lifetime']
-                    Curr['Refurbishment Cost (Inverter)'] = EPC['Original Price']['InverterCost'] * np.power((1 + (Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
+                    Curr['Refurbishment Cost (Inverter)'] = (np.abs(EPC['New Price']['InstallationCostExcPanels']) * np.abs(EPC['New Price']['InverterCostAsPercentofCiepPrice'])) * np.power((1 + (Inputs.attrs['InvCosInf']*0.01)),int((Curr['Project Time'].days/365)))
                 else:
                     Curr['Refurbishment Cost (Inverter)'] = 0
 
@@ -223,7 +234,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['Annual O&M Cost'] = Prev['Annual O&M Cost'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
             
             if Curr['Date'] >= PrjEndDate:
-                Curr['Land Retnal'] = 0
+                Curr['Land Rental'] = 0
             else:
                 Curr['Land Rental'] = Prev['Land Rental'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
 
@@ -239,22 +250,23 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             elif Curr['Date'] == Initial['Date'] + timedelta(hours=TimeRes):
                 Curr['LCOE'] = 0
             else:
-                TCost = df["Total Cost"].to_numpy().copy()
-                PVGen = df["PV Generation"].to_numpy().copy()
+                TCost = df[:i,22]
+                PVGen = df[:i,13]
                 PPD = Inputs.attrs['Dcr']*0.01
-                D = df["Date"]
-                Curr['LCOE'] = (np.abs(EPC['New Price']['NewPrice']) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
-                #print(PPD)
-                #print(TCost)
-                #print(D)
-                #print(np.abs(EPC['New Price']['New price']) + np.abs(xnpv(PPD,TCost,D)))
-                #print(xnpv(PPD,PVGen,D))
+                D = df[:i,0]
+                Curr['LCOE'] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
+                
             CurrS = pd.Series(Curr)
-            df = df.append(CurrS,ignore_index=True)
-        
+            CurrS = CurrS.to_numpy()
+            df[i] = CurrS
+            i = i + 1
+
             Prev = Curr.copy()
         Results(ProjName, Curr)
-        df.to_excel(str(ProjName)+'.xlsx')
+        df = pd.DataFrame(df)
+        df.columns=CFC
+        f.close()
+        df.to_hdf(str(ProjName) + ".hdf5",key='CashFlow', mode='a')  
     return
 
 def Results(ProjName,Data):

@@ -54,7 +54,7 @@ def Epcm(ProjName):
         ICEP = NPG.require_dataset('InstallationCostExcPanels', shape=np.shape(ICEPC), data=ICEPC, dtype='f8')
 
         NPCC = PCC * 1000 * EPC.attrs['PVSize']
-        NPC2 = NPG.require_dataset('PanelCost', shape=np.shape(NPCC), data=NPCC, dtype='f8')
+        NPC2 = NPG.require_dataset('PanelCost2', shape=np.shape(NPCC), data=NPCC, dtype='f8')
 
         NPC3 = ICEPC + NPCC
 
