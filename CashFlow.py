@@ -131,7 +131,7 @@ def xnpv(rate, values, dates):
     if rate <= -1.0:
         return float('inf')
     d0 = dates[0]
-    return sum([ vi / (1.0 + rate)**(((di - d0).days) / 365) for vi, di in zip(values, dates)])
+    return sum([ vi / (1.0 + rate)**((di - d0).days / 365) for vi, di in zip(values, dates)])
 
 #Main loop of the Cash flow model
 def ProjectLife(Initial, TimeRes, ProjName, Data):
@@ -168,38 +168,34 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
 
             if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn-inPeakSunHours']:
                 Curr['Panel State of Health'] = Curr['Long Term Degredation (abs after burn in)']
-            else:
-                Curr['Panel State of Health'] = Curr['Burn in (absolute)']
-            
-            if Curr['Cumilative Sun Hours'] > Panel.attrs['Burn-inPeakSunHours']:
                 Curr['Peak Capacity'] = float(EPC.attrs['PVSize']) * (1 - float(Panel.attrs['Burn-in'].strip('%'))*0.01) * float(Curr['Panel State of Health'])
             else:
+                Curr['Panel State of Health'] = Curr['Burn in (absolute)']
                 Curr['Peak Capacity'] = EPC.attrs['PVSize'] * Curr['Panel State of Health']
 
             Curr['Monthly Yeild'] = Irr(Curr['Date'],'Yeild',ProjName)
 
-            if Curr['Date'] >= PrjEndDate:
-                Curr['PV Generation'] = 0
-            else:
-                Curr ['PV Generation'] = Curr['Monthly Yeild'] * np.average([Curr['Peak Capacity'],Prev['Peak Capacity']])
-            
             Curr['Capital Cost'] = 0
             
             Curr['Panel Price This Year'] = Panel.attrs['Cost'] + ((Prev['Panel Price This Year'] - Panel.attrs['Cost'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/12))
+            
+            Curr['Refurbishment Cost (Panels)'] = Curr['Refurbishment Cost (Panels - Other)']  + Curr['Refurbishment Cost (Panels - PV)']
+
+            Curr['Cost Check'] = 0
 
             if Curr['Date'] >= PrjEndDate:
-                Curr['Refurbishment Cost (Panels - PV)'] = 0
+                Curr['PV Generation'] = 0
+                Curr['Refurbishment Cost (Inverter)'] = 0
+                Curr['Annual O&M Cost'] = 0
+                Curr['Land Rental'] = 0
+                Curr['Total Cost'] = 0
             else:
+                Curr ['PV Generation'] = Curr['Monthly Yeild'] * np.average([Curr['Peak Capacity'],Prev['Peak Capacity']])
+                Curr['Annual O&M Cost'] = Prev['Annual O&M Cost'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
+                Curr['Land Rental'] = Prev['Land Rental'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
+                
                 if Curr['Panel Replacement Year'] == True:
                     Curr['Refurbishment Cost (Panels - PV)'] = 1000 * EPC.attrs['PVSize'] * Curr['Panel Price This Year']
-                else:
-                    Curr['Panel Replacement Year'] = 0
-                    Curr['Refurbishment Cost (Panels - PV)'] = 0
-            
-            if Curr['Date'] >= PrjEndDate:
-                Curr['Refurbishment Cost (Panels - Other)'] = 0
-            else:
-                if Curr['Panel Replacement Year'] == True:
                     Curr['Refurbishment Cost (Panels - Other)'] = (np.abs(EPC['New Price']['NewPrice']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((Curr['Project Time'].days/365) - 1))
                     Curr['Cumilative Sun Hours'] = Irr(Curr['Date'],'PeakSunHours',ProjName)
                     Curr['Burn in (absolute)'] = (Panel.attrs['a'] * Irr(Curr['Date'],'PeakSunHours',ProjName) * Irr(Curr['Date'],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(Curr['Date'],'PeakSunHours',ProjName) + 1)
@@ -215,57 +211,35 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                     Curr['PV Generation'] = Initial['Monthly Yeild'] * np.average([Prev['Peak Capacity'], Curr['Peak Capacity']])
                 else:
                     Curr['Panel Replacement Year'] = 0
+                    Curr['Refurbishment Cost (Panels - PV)'] = 0
                     Curr['Refurbishment Cost (Panels - Other)'] = 0
 
-            Curr['Refurbishment Cost (Panels)'] = Curr['Refurbishment Cost (Panels - Other)']  + Curr['Refurbishment Cost (Panels - PV)']
-
-            if Curr['Date'] >= PrjEndDate:
-                Curr['Refurbishment Cost (Inverter)'] = 0
-            else:
                 if Curr['Inverter Lifetime'].days < 0: 
                     Curr['Inverter Lifetime'] = Initial['Inverter Lifetime']
                     Curr['Refurbishment Cost (Inverter)'] = (np.abs(EPC['New Price']['InstallationCostExcPanels']) * np.abs(EPC['New Price']['InverterCostAsPercentofCiepPrice'])) * np.power((1 + (Inputs.attrs['InvCosInf']*0.01)),int((Curr['Project Time'].days/365)))
                 else:
                     Curr['Refurbishment Cost (Inverter)'] = 0
-
-            if Curr['Date'] >= PrjEndDate:
-                Curr['Annual O&M Cost'] = 0
-            else:
-                Curr['Annual O&M Cost'] = Prev['Annual O&M Cost'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
-            
-            if Curr['Date'] >= PrjEndDate:
-                Curr['Land Rental'] = 0
-            else:
-                Curr['Land Rental'] = Prev['Land Rental'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
-
-            if Curr['Date'] >= PrjEndDate:
-                Curr['Total Cost'] = 0
-            else:
+                
                 Curr['Total Cost']  = Curr['Capital Cost'] + Curr['Refurbishment Cost (Panels)'] + Curr['Refurbishment Cost (Inverter)'] + Curr['Annual O&M Cost'] + Curr['Land Rental']
             
-            Curr['Cost Check'] = 0
-
-            if Curr['Date'] == Initial['Date']:
-                Curr['LCOE'] = 0
-            elif Curr['Date'] == Initial['Date'] + timedelta(hours=TimeRes):
-                Curr['LCOE'] = 0
-            else:
-                TCost = df[:i,22]
-                PVGen = df[:i,13]
-                PPD = Inputs.attrs['Dcr']*0.01
-                D = df[:i,0]
-                Curr['LCOE'] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
-                
+            
+            TCost = df[:i,22]
+            PVGen = df[:i,13]
+            PPD = Inputs.attrs['Dcr']*0.01
+            D = df[:i,0]
+            Curr['LCOE'] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
             CurrS = pd.Series(Curr)
             CurrS = CurrS.to_numpy()
             df[i] = CurrS
             i = i + 1
 
             Prev = Curr.copy()
+
         Results(ProjName, Curr)
         df = pd.DataFrame(df)
         df.columns=CFC
         f.close()
+        df.to_excel(str(ProjName)+".xlsx")
         df.to_hdf(str(ProjName) + ".hdf5",key='CashFlow', mode='a')  
     return
 
