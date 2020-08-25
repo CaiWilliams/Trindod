@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from EPCM import Epcm
 from CashFlow import Cashflow
-from Init import LocCheck,TypeCheck,PanCheck,SaveProject,RiskFetch
+from Init import TypeCheck,PanCheck,SaveProject,RiskFetch
 from Variables import GenVars,PrintVars,Load,Save
 
 def Main():
@@ -79,8 +79,6 @@ def ProjectSetup(ProjName,PreCalc):
 
             df = pd.read_csv('Data/Location/'+file)
             df.to_csv('Temp.csv')
-        else:
-            LocCheck(Inputs.attrs['Latitude'], Inputs.attrs['Longitude'])
     f.close()
     return
 

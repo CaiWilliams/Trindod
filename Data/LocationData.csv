@@ -1,4 +1,4 @@
-Location,PV Yield before LID (kWh/kWp),Tilt. deg,"Table spacing, m",Most likely IRR Scenario
+Location,PV Yield before LID (kWh/kWp),Tilt,Spacing,IRR
 auckland,0,30,8,Medium Risk
 dunedin,66,30,8,Medium Risk
 cornwall,0,30,7,Low Risk

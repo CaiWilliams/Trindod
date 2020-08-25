@@ -1,23 +1,12 @@
 import numpy as np
 import os
 import h5py
+import io
 import requests
 import csv
 import pandas as pd
+from datetime import datetime
 from Variables import Load
-
-
-#Checks if Location is valid PVGIS Location
-def LocCheck(Lat, Lon):
-    url="https://re.jrc.ec.europa.eu/api/seriescalc?lat="+str(Lat)+"&lon="+str(Lon)+"&outputformat=csv"
-    Response = requests.get(url)
-    Code = int(Response.status_code)
-    if Code != 200:
-        print("Location is not supported by PVGIS! Enter Valid Location!")
-        ProjectLoc()
-    else:
-        open('Temp.csv','wb').write(Response.content)
-    return 
 
 #Fectches and inputs info regarding project type
 def TypeCheck(ProjectName):
@@ -55,18 +44,23 @@ def PanCheck(ProjectName):
             i = i + 1
     return
 
-#Processing for standard PVGIS output
-def dftreat():
-    df = pd.read_csv("Temp.csv",skiprows=8,skipfooter=9,engine='python')
-    T = df["time"].str.split(":", n=1,expand=True)
-    df["time"] = T[1]
-    df["date"] = T[0]
-    df.to_csv("Temp.csv")
-    return df
+def LocProps(ProjName):
+    with h5py.File(str(ProjName) + ".hdf5","a") as f:
+        Inputs = f['Inputs']
+        try:
+            if Inputs.attrs['LocProps'] == "y":
+                tilt = Inputs.attrs['tilt']
+                azimuth = Inputs.attrs['azimuth']
+            return tilt, azimuth
+        except:
+            LocationProperties = pd.read_csv('Data/LocationData.csv')
+            Loc = LocationProperties.loc[LocationProperties['Location'] == Inputs.attrs['PrjLoc'].lower()]
+            
+            tilt = Loc['Tilt'].values[0]
+            azimuth =  0
+            return tilt, azimuth
 
-
-    #IrrData = dftreat()
-    #IrrData.to_hdf(PrjName + ".hdf5",key='IrradianceRaw', mode='a')  
+    return
 
 def SaveProject(ProjName,PreCal):
     with open('Temp.csv') as csvfile:
@@ -85,17 +79,23 @@ def SaveProject(ProjName,PreCal):
                     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
                         Irr = f.require_group("Irradiance")
                         Irr.require_dataset("PeakSunHours",data=Peak,shape=np.shape(Peak),dtype='f8')
+                elif line == 2:
+                    lat = np.asarray(row)
+                    lat = lat[1]
+                elif line == 3:
+                    lon = np.asarray(row)
+                    lon = lon[1]
                 line = line + 1
-    if PreCal == 'y':
-        os.remove('Temp.csv')
-        return
-    elif PreCal == 'n':
-        with h5py.File(str(ProjName)+".hdf5","a") as f:
-            Inputs = f['Inputs']
-            lat = Inputs.attrs['Latitude']
-            lon = Inputs.attrs['Longitude']
-            r = requests.get(' https://re.jrc.ec.europa.eu/api/tmy?'+'lat=' +lat + '&lon='+lon)
-            print(r.content)
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        tilt,azimuth = LocProps(ProjName)
+        r = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?'+'lat=' +str(lat) + '&lon='+str(lon) + '&angle='+str(tilt)+'&aspect='+str(azimuth)+'&startyear=2015&endyear=2015')
+        TMY = io.StringIO(r.content.decode('utf-8'))
+        TMY = pd.read_csv(TMY,skipfooter=9,skiprows=[0,1,2,3,4,5,6,7],engine='python')
+        for n in TMY.index:
+            TMY.at[n,'time'] = datetime.strptime(TMY.at[n,'time'], '%Y%m%d:%H11').replace(year=datetime.strptime(Inputs.attrs['ModSta'],'%d/%m/%Y').year)
+    f.close() 
+    TMY.to_hdf(str(ProjName)+".hdf5",key='TMY')
     os.remove('Temp.csv')
     return
 

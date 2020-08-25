@@ -73,7 +73,7 @@ def TiltDeg(ProjName):
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Inputs = f['Inputs']
         Loc = Inputs.attrs['PrjLoc']
-        Prop = "Tilt. deg"
+        Prop = "Tilt"
         Rec = FetchLocInfo(Loc, Prop)
         Ref = float(Rec)
     return Rec
@@ -83,7 +83,7 @@ def ArraySpaceing(ProjName):
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Inputs = f['Inputs']
         Loc = Inputs.attrs['PrjLoc']
-        Prop = "Table spacing, m"
+        Prop = "Spacing"
         Rec = FetchLocInfo(Loc, Prop)
         Ref = float(Rec)
     return Rec

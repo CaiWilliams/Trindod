@@ -68,7 +68,6 @@ def Setup(ProjName):
 #Converts date to datetime object
 def StartDate(Date):
     DTobj = datetime.strptime(Date, '%d/%m/%Y')
-    print(DTobj)
     return DTobj
 
 #Fetches property for selected month
