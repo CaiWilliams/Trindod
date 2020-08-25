@@ -69,8 +69,7 @@ def dftreat():
     #IrrData.to_hdf(PrjName + ".hdf5",key='IrradianceRaw', mode='a')  
 
 def SaveProject(ProjName,PreCal):
-    if PreCal == 'y':
-        with open('Temp.csv') as csvfile:
+    with open('Temp.csv') as csvfile:
             csv_reader = csv.reader(csvfile, delimiter=',')
             line = 0
             for row in csv_reader:
@@ -87,7 +86,17 @@ def SaveProject(ProjName,PreCal):
                         Irr = f.require_group("Irradiance")
                         Irr.require_dataset("PeakSunHours",data=Peak,shape=np.shape(Peak),dtype='f8')
                 line = line + 1
+    if PreCal == 'y':
         os.remove('Temp.csv')
+        return
+    elif PreCal == 'n':
+        with h5py.File(str(ProjName)+".hdf5","a") as f:
+            Inputs = f['Inputs']
+            lat = Inputs.attrs['Latitude']
+            lon = Inputs.attrs['Longitude']
+            r = requests.get(' https://re.jrc.ec.europa.eu/api/tmy?'+'lat=' +lat + '&lon='+lon)
+            print(r.content)
+    os.remove('Temp.csv')
     return
 
 def RiskFetch(ProjName):

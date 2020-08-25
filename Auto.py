@@ -19,20 +19,19 @@ def LoadQue(Que):
     return RQ
 
 def RunItem(RQ):
-    RQD = RQ.drop(['ProjectName','PreCalculated','Location','Latitude','Longitude'],axis=1)
+    #RQD = RQ.drop(['ProjectName','PreCalculated','Latitude','Longitude'],axis=1)
     n = 0
-    for row in RQD.itertuples(index=False):
+    for row in RQ.itertuples(index=False):
         Vars = row._asdict()
         ProjName = RQ.loc[n]['ProjectName']
         PreCalc = RQ.loc[n]['PreCalculated']
-        Loc = RQ.loc[n]['Location']
         Lat = RQ.loc[n]['Latitude']
         Lon = RQ.loc[n]['Longitude']
         n = n + 1
-        Model(ProjName,PreCalc,Loc,Lat,Lon,Vars)
+        Model(ProjName,PreCalc,Lat,Lon,Vars)
     return
 
-def Model(ProjName,PreCalc,Loc,Lat,Lon,Vars):
+def Model(ProjName,PreCalc,Lat,Lon,Vars):
     Save(Vars,"Data/Variables.p")
     ProjectSetup(ProjName,PreCalc)
     SaveProject(ProjName,PreCalc)

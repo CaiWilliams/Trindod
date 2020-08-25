@@ -17,6 +17,8 @@ def GenVars():
     'OprCos': 0.01,
     'RenCos': 0.5,
     'RenInf': 2.1,
+    'Latitude':0,
+    'Longitude':0,
     }
     VariablesDict = {
     'PanTyp': 'Pannel Type',
@@ -32,7 +34,9 @@ def GenVars():
     'InvCosInf': 'Inverter Cost Inflation',
     'OprCos': 'Operating Cost',
     'RenCos': 'Operating cost (rental-groundmount only)',
-    'RenInf': 'Rental inflation', 
+    'RenInf': 'Rental inflation',
+    'Latitude':'Latitude',
+    'Longitude':'Longitude',
     }
     VariablesUnits = {
     'PanTyp':'',
@@ -48,7 +52,9 @@ def GenVars():
     'InvCosInf': '%',
     'OprCos': 'USD/Wp',
     'RenCos': 'USD/m2',
-    'RenInf': '%', 
+    'RenInf': '%',
+    'Latitude':'Latitude',
+    'Longitude':'Longitude',
     }
     VariablesIntVals = {
     1:'PanTyp',
@@ -64,7 +70,9 @@ def GenVars():
     12:'InvCosInf',
     13:'OprCos',
     14:'RenCos',
-    15:'RenInf', 
+    15:'RenInf',
+    16:'Latitude',
+    17:'Longitude',
     }
     pickle.dump(Variables, open("Data/Variables.p","ab"))
     pickle.dump(VariablesDict, open("Data/VariablesDict.p","ab"))
