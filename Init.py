@@ -80,7 +80,10 @@ def SaveProject(ProjName,PreCal):
         for n in TMY.index:
             TMY.at[n,'time'] = datetime.strptime(TMY.at[n,'time'], '%Y%m%d:%H11').replace(year=datetime.strptime(Inputs.attrs['ModSta'],'%d/%m/%Y').year)
     f.close() 
-    TMY.to_hdf(str(ProjName)+".hdf5",key='TMY')
+    #hdf = pd.HDFStore(ProjName+'.hdf5')
+    #hdf.put('TMY',TMY)
+    TMY.to_hdf(str(ProjName)+".hdf5",key='TMY',format='fixed')
+    TMY.to_csv('TMY.csv')
     os.remove('Temp.csv')
     return
 

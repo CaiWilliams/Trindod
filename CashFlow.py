@@ -16,7 +16,7 @@ def Cashflow(ProjName):
 
 #Setsup cash flow model with initial data
 def Setup(ProjName):
-    CFC = ['Date','ProjectYear','PanelLifetime','InverterLifetime','PanelReplacementYear','PeakSunHours','CumilativeSunHours','Burn-inAbsolute','LongTermDegredation','LongTermDegredationAbsolute','PanelStateofHealth','PeakCapacity','MonthlyYeild','PVGeneration','CapitalCost','RefurbishmentCost(Panels-PV)','RefurbishmentCost(Panels-Other)','RefurbishmentCost(Panels)','PanelPriceThisYear','RefurbishmentCost(Inverter)','AnnualO&MCost','LandRental','TotalCost','CostCheck','LCOE']
+    CFC = ['Date','ProjectYear','PanelLifetime','InverterLifetime','PanelReplacementYear','PeakSunHours','CumilativeSunHours','Burn-inAbsolute','LongTermDegredation','LongTermDegredationAbsolute','PanelStateofHealth','PeakCapacity','EffectiveCapacity','MonthlyYeild','PVGeneration','CapitalCost','RefurbishmentCost(Panels-PV)','RefurbishmentCost(Panels-Other)','RefurbishmentCost(Panels)','PanelPriceThisYear','RefurbishmentCost(Inverter)','AnnualO&MCost','LandRental','TotalCost','CostCheck','LCOE']
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
 
         Inputs = f['Inputs']
@@ -74,7 +74,7 @@ def TimestepRevDelt(ProjName):
         if Timestep == 'month':
             Rev = relativedelta(months=+1)
         elif Timestep == 'hour':
-            Rev = relativedelta(hour=+1)
+            Rev = relativedelta(hours=+1)
     return Rev
 
 def TimeStepDev(ProjName):
@@ -84,7 +84,7 @@ def TimeStepDev(ProjName):
         if Timestep == 'month':
             dev = 12
         elif Timestep == 'hour':
-            if isleap(datetime.strptime(Inputs.attrs['ModSta'], '%d/%m%Y').year) == True:
+            if isleap(datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y').year) == True:
                 dev = 366 * 24
             else:
                 dev = 365 * 24
@@ -162,8 +162,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
     Curr = Initial.copy()
     df = Data
     df[0,0] = df[0,0].to_pydatetime()
-    CFC = ['Date','ProjectYear','PanelLifetime','InverterLifetime','PanelReplacementYear','PeakSunHours','CumilativeSunHours','Burn-inAbsolute','LongTermDegredation','LongTermDegredationAbsolute','PanelStateofHealth','PeakCapacity','MonthlyYeild','PVGeneration','CapitalCost','RefurbishmentCost(Panels-PV)','RefurbishmentCost(Panels-Other)','RefurbishmentCost(Panels)','PanelPriceThisYear','RefurbishmentCost(Inverter)','AnnualO&MCost','LandRental','TotalCost','CostCheck','LCOE']
-    CFCD = ['Date','Project Year','Panel Lifetime','Inverter Lifetime','Panel Replacement Year','Peak Sun Hours','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Rental','Total Cost','Cost Check','LCOE','Project Time']
+    CFC = ['Date','ProjectYear','PanelLifetime','InverterLifetime','PanelReplacementYear','PeakSunHours','CumilativeSunHours','Burn-inAbsolute','LongTermDegredation','LongTermDegredationAbsolute','PanelStateofHealth','PeakCapacity','EffectiveCapacity','MonthlyYeild','PVGeneration','CapitalCost','RefurbishmentCost(Panels-PV)','RefurbishmentCost(Panels-Other)','RefurbishmentCost(Panels)','PanelPriceThisYear','RefurbishmentCost(Inverter)','AnnualO&MCost','LandRental','TotalCost','CostCheck','LCOE']
+    CFCD = ['Date','Project Year','Panel Lifetime','Inverter Lifetime','Panel Replacement Year','Peak Sun Hours','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Effective Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Rental','Total Cost','Cost Check','LCOE','Project Time']
     with h5py.File(str(ProjName) + ".hdf5", "r+") as f:
         Inputs = f['Inputs']
         Panel = f['Pannel Data']
@@ -173,6 +173,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         i = 1
         while Curr['Date'] < PrjEndDate:
             Curr['Date'] = Prev['Date'] + TimestepRevDelt(ProjName)
+            EM = EffceftiveMultiplier(Curr['Date'],ProjName)
             Curr['ProjectYear'] = np.abs(Initial['Date'] - Curr['Date']).days // 365
             Curr['ProjectTime'] = np.abs(Initial['Date'] - Curr['Date'])
             Curr['PanelLifetime'] = Prev['PanelLifetime'] - (Curr['ProjectTime']-Prev['ProjectTime'])
@@ -207,7 +208,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
 
             Curr['CostCheck'] = 0
 
-            Curr['EffectiveCapacity'] = Curr['PeakCapacity']
+            Curr['EffectiveCapacity'] = Curr['PeakCapacity'] * EM
 
             if Curr['Date'] >= PrjEndDate:
                 Curr['PVGeneration'] = 0
@@ -229,12 +230,12 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                     Curr['LongTermDegredationAbsolute'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
                     Curr['PanelStateofHealth'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
                     Curr['PeakCapacity'] = EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))
-                    Curr['EffectiveCapacity'] = Curr['PeakCapacity']
+                    Curr['EffectiveCapacity'] = Curr['PeakCapacity'] * EM
                     Curr['PVGeneration'] = Irr(Curr['Date'],'Yeild',ProjName) * ((EPC.attrs['PVSize']) + Curr['EffectiveCapacity'])/2
                     if Curr['PanelStateofHealth'] > 1:
                         Curr['PanelStateofHealth'] = Curr['Burn-inAbsolute']
                         Curr['PeakCapacity'] = EPC.attrs['PVSize'] * Curr['Burn-inAbsolute']
-                        Curr['EffectiveCapacity'] = Curr['PeakCapacity']
+                        Curr['EffectiveCapacity'] = Curr['PeakCapacity'] * EM
                     Curr['PVGeneration'] = Initial['MonthlyYeild'] * np.average([Prev['EffectiveCapacity'], Curr['EffectiveCapacity']])
                 else:
                     Curr['PanelReplacementYear'] = 0
@@ -259,7 +260,6 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             CurrS = CurrS.to_numpy()
             df[i] = CurrS
             i = i + 1
-
             Prev = Curr.copy()
 
         Results(ProjName, Curr)
@@ -325,3 +325,32 @@ def ResPanel(Prop,ProjName,Data):
         Panel = f['Pannel Data']
         Val = Panel.attrs[Prop]
     return Val
+
+def EffceftiveMultiplier(Date,ProjName):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Type = Inputs.attrs['Tech'].lower()
+        if Type == 'opv':
+            TFile = 'Data/Panel/OPV.csv'
+        elif Type == 'pvk':
+            TFile = 'Data/Panel/PVK.csv'
+        elif Type == 'dssc':
+            TFile = 'Data/Panel/DSSC.csv'
+        elif Type == 'xsi':
+            TFile = 'Data/Panel/XSI.csv'
+        else:
+            return 1
+    f.close()
+    Params = pd.read_csv(TFile,header=None)
+    Params = Params.loc[1].values[1:]
+    Poly = np.polynomial.Polynomial(Params)
+    TMY = pd.read_csv('TMY.csv')
+    TMY['time'] = pd.to_datetime(TMY['time'],format='%Y-%m-%d %H:%M:%S')
+    G = TMY.query('time == @Date')['G(i)'].values[0]
+    if G != 0:
+        G = np.log(G * 118)
+    else:
+        return 1
+    G = Poly(G)
+    return G
+        
