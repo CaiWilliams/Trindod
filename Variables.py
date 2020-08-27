@@ -19,6 +19,7 @@ def GenVars():
     'RenInf': 2.1,
     'Latitude':0,
     'Longitude':0,
+    'TimStp':'month',
     }
     VariablesDict = {
     'PanTyp': 'Pannel Type',
@@ -37,6 +38,7 @@ def GenVars():
     'RenInf': 'Rental inflation',
     'Latitude':'Latitude',
     'Longitude':'Longitude',
+    'TimStp':'TimeStep'
     }
     VariablesUnits = {
     'PanTyp':'',
@@ -55,6 +57,7 @@ def GenVars():
     'RenInf': '%',
     'Latitude':'Latitude',
     'Longitude':'Longitude',
+    'TimStp':'',
     }
     VariablesIntVals = {
     1:'PanTyp',
@@ -73,6 +76,7 @@ def GenVars():
     15:'RenInf',
     16:'Latitude',
     17:'Longitude',
+    18:'TimStp',
     }
     pickle.dump(Variables, open("Data/Variables.p","ab"))
     pickle.dump(VariablesDict, open("Data/VariablesDict.p","ab"))

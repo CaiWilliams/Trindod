@@ -67,16 +67,6 @@ def ProjectSetup(ProjName,PreCalc):
             name = file
             name = name.split('.')
             name = name[0]
-            with open('Data/Location/'+file) as csvfile:
-                csv_reader = csv.reader(csvfile, delimiter=',')
-                line = 0
-                for row in csv_reader:
-                    if line == 2:
-                        Lat = row[0]
-                    elif line == 3:
-                        Lon = row[0]
-                    line = line + 1
-
             df = pd.read_csv('Data/Location/'+file)
             df.to_csv('Temp.csv')
     f.close()

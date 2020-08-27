@@ -63,30 +63,15 @@ def LocProps(ProjName):
     return
 
 def SaveProject(ProjName,PreCal):
-    with open('Temp.csv') as csvfile:
-            csv_reader = csv.reader(csvfile, delimiter=',')
-            line = 0
-            for row in csv_reader:
-                if line == 0:
-                    Yeild = np.asarray(row)
-                    Yeild = Yeild[1:].astype(float)
-                    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
-                        Irr = f.require_group("Irradiance")
-                        Irr.require_dataset("Yeild",data=Yeild,shape=np.shape(Yeild),dtype='f8')
-                elif line == 1:
-                    Peak = np.asarray(row)
-                    Peak = Peak[1:].astype(float)
-                    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
-                        Irr = f.require_group("Irradiance")
-                        Irr.require_dataset("PeakSunHours",data=Peak,shape=np.shape(Peak),dtype='f8')
-                elif line == 2:
-                    lat = np.asarray(row)
-                    lat = lat[1]
-                elif line == 3:
-                    lon = np.asarray(row)
-                    lon = lon[1]
-                line = line + 1
+    LocDat = pd.read_csv('Temp.csv',header=None,index_col=False)
+    Yeild = LocDat.loc[0].values[1:]
+    Peak = LocDat.loc[1].values[1:]
+    lat = LocDat.loc[2].values[1]
+    lon = LocDat.loc[3].values[1]
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Irr = f.require_group("Irradiance")
+        Irr.require_dataset("Yeild",data=Yeild,shape=np.shape(Yeild),dtype='f8')
+        Irr.require_dataset("PeakSunHours",data=Peak,shape=np.shape(Peak),dtype='f8')
         Inputs = f['Inputs']
         tilt,azimuth = LocProps(ProjName)
         r = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?'+'lat=' +str(lat) + '&lon='+str(lon) + '&angle='+str(tilt)+'&aspect='+str(azimuth)+'&startyear=2015&endyear=2015')

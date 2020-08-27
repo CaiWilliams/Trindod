@@ -5,6 +5,7 @@ import h5py
 from datetime import datetime
 from datetime import timedelta
 from dateutil.relativedelta import *
+from calendar import isleap
 
 #Main Run order of CashFlow model
 def Cashflow(ProjName):
@@ -36,6 +37,7 @@ def Setup(ProjName):
         'LongTermDegredationAbsolute':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01),
         'PanelStateofHealth':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01),
         'PeakCapacity': EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)),
+        'EffectiveCapacity': EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)),
         'MonthlyYeild': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName),
         'PVGeneration': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName) * ((EPC.attrs['PVSize'])+(EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))))/2,
         'CapitalCost': 0,#EPC['New Price']['Installation cost exc. panels'] + (1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp']),
@@ -44,9 +46,9 @@ def Setup(ProjName):
         'RefurbishmentCost(Panels)':0,
         'PanelPriceThisYear': Panel.attrs['Cost'],
         'RefurbishmentCost(Inverter)':0,
-        'AnnualO&MCost': (1000 * EPC.attrs['PVSize'] * 0.01) / 12,
-        'LandRental': Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / 12,
-        'TotalCost': ((1000 * EPC.attrs['PVSize'] * 0.01) / 12) + (Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / 12),
+        'AnnualO&MCost': (1000 * EPC.attrs['PVSize'] * 0.01) / TimeStepDev(ProjName),
+        'LandRental': Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / TimeStepDev(ProjName),
+        'TotalCost': ((1000 * EPC.attrs['PVSize'] * 0.01) / TimeStepDev(ProjName)) + (Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / TimeStepDev(ProjName)),
         'CostCheck': np.abs((EPC['New Price']['InstallationCostExcPanels'] + 1000 * EPC.attrs['PVSize'] * Panel.attrs['Cost'])/EPC.attrs['PVSize'])/1000,
         'LCOE':0,
         }
@@ -59,11 +61,34 @@ def Setup(ProjName):
         dfA = df.to_numpy()
         z = np.zeros([1,(len(CFC)+1)])
         I=0
-        while I < (Inputs.attrs['PrjLif']*12):
+        while I < (Inputs.attrs['PrjLif']*TimeStepDev(ProjName)):
             dfA = np.append(dfA, z,axis=0)
             I = I + 1
         a = pd.DataFrame(dfA)
     return dfA, Initial
+
+def TimestepRevDelt(ProjName):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'month':
+            Rev = relativedelta(months=+1)
+        elif Timestep == 'hour':
+            Rev = relativedelta(hour=+1)
+    return Rev
+
+def TimeStepDev(ProjName):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'month':
+            dev = 12
+        elif Timestep == 'hour':
+            if isleap(datetime.strptime(Inputs.attrs['ModSta'], '%d/%m%Y').year) == True:
+                dev = 366 * 24
+            else:
+                dev = 365 * 24
+    return dev
 
 #Converts date to datetime object
 def StartDate(Date):
@@ -147,7 +172,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         PrjEndDate = Initial['Date'] + timedelta(days=float(PrjLif))
         i = 1
         while Curr['Date'] < PrjEndDate:
-            Curr['Date'] = Prev['Date'] + relativedelta(months=+1)
+            Curr['Date'] = Prev['Date'] + TimestepRevDelt(ProjName)
             Curr['ProjectYear'] = np.abs(Initial['Date'] - Curr['Date']).days // 365
             Curr['ProjectTime'] = np.abs(Initial['Date'] - Curr['Date'])
             Curr['PanelLifetime'] = Prev['PanelLifetime'] - (Curr['ProjectTime']-Prev['ProjectTime'])
@@ -176,11 +201,13 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
 
             Curr['CapitalCost'] = 0
             
-            Curr['PanelPriceThisYear'] = Panel.attrs['Cost'] + ((Prev['PanelPriceThisYear'] - Panel.attrs['Cost'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/12))
+            Curr['PanelPriceThisYear'] = Panel.attrs['Cost'] + ((Prev['PanelPriceThisYear'] - Panel.attrs['Cost'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/TimeStepDev(ProjName)))
             
             Curr['RefurbishmentCost(Panels)'] = Curr['RefurbishmentCost(Panels-Other)']  + Curr['RefurbishmentCost(Panels-PV)']
 
             Curr['CostCheck'] = 0
+
+            Curr['EffectiveCapacity'] = Curr['PeakCapacity']
 
             if Curr['Date'] >= PrjEndDate:
                 Curr['PVGeneration'] = 0
@@ -189,9 +216,9 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['LandRental'] = 0
                 Curr['TotalCost'] = 0
             else:
-                Curr ['PVGeneration'] = Curr['MonthlyYeild'] * np.average([Curr['PeakCapacity'],Prev['PeakCapacity']])
-                Curr['AnnualO&MCost'] = Prev['AnnualO&MCost'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
-                Curr['LandRental'] = Prev['LandRental'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/12)
+                Curr ['PVGeneration'] = Curr['MonthlyYeild'] * np.average([Curr['EffectiveCapacity'],Prev['EffectiveCapacity']])
+                Curr['AnnualO&MCost'] = Prev['AnnualO&MCost'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName))
+                Curr['LandRental'] = Prev['LandRental'] * (1 + (Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName))
                 
                 if Curr['PanelReplacementYear'] == True:
                     Curr['RefurbishmentCost(Panels-PV)'] = 1000 * EPC.attrs['PVSize'] * Curr['PanelPriceThisYear']
@@ -202,12 +229,13 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                     Curr['LongTermDegredationAbsolute'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
                     Curr['PanelStateofHealth'] = ((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
                     Curr['PeakCapacity'] = EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))
-                    Curr['PVGeneration'] = Irr(Curr['Date'],'Yeild',ProjName) * ((EPC.attrs['PVSize'])+(EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(Curr['Date'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))))/2
+                    Curr['EffectiveCapacity'] = Curr['PeakCapacity']
+                    Curr['PVGeneration'] = Irr(Curr['Date'],'Yeild',ProjName) * ((EPC.attrs['PVSize']) + Curr['EffectiveCapacity'])/2
                     if Curr['PanelStateofHealth'] > 1:
                         Curr['PanelStateofHealth'] = Curr['Burn-inAbsolute']
                         Curr['PeakCapacity'] = EPC.attrs['PVSize'] * Curr['Burn-inAbsolute']
-                        
-                    Curr['PVGeneration'] = Initial['MonthlyYeild'] * np.average([Prev['PeakCapacity'], Curr['PeakCapacity']])
+                        Curr['EffectiveCapacity'] = Curr['PeakCapacity']
+                    Curr['PVGeneration'] = Initial['MonthlyYeild'] * np.average([Prev['EffectiveCapacity'], Curr['EffectiveCapacity']])
                 else:
                     Curr['PanelReplacementYear'] = 0
                     Curr['RefurbishmentCost(Panels-PV)'] = 0
