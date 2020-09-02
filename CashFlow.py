@@ -64,11 +64,8 @@ def Setup(ProjName):
         InitialS = pd.Series(Initial)
         df = df.append(InitialS, ignore_index=True)
         dfA = df.to_numpy()
-        z = np.zeros([1,(len(CFC)+1)])
-        I=0
-        while I < (Inputs.attrs['PrjLif']*TimeStepDev(ProjName)):
-            dfA = np.append(dfA, z,axis=0)
-            I = I + 1
+        z = np.zeros([((Inputs.attrs['PrjLif']*TimeStepDev(ProjName))+1),(len(CFC)+1)])
+        dfA = np.append(dfA, z,axis=0)
         a = pd.DataFrame(dfA)
     return dfA, Initial
 
@@ -169,7 +166,11 @@ def xnpv(rate, values, dates):
     if rate <= -1.0:
         return float('inf')
     d0 = dates[0]
-    return sum([ vi / (1.0 + rate)**((di - d0).days / 365) for vi, di in zip(values, dates)])
+    D = (dates[:] - d0)
+    for day in range(len(D)):
+        D[day] = D[day].days
+    D = D[:]/365
+    return sum(values[:] / (1.0 + rate)**(D[:]))
 
 def to_relativedelta(tdelta):
     return relativedelta(seconds=int(tdelta.total_seconds()),microseconds=tdelta.microseconds)
@@ -200,7 +201,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             Delta = ModelStartDate - IrradianceStartDate
             IDelta = Delta.days/((ModelStartDate+TimestepRevDelt(ProjName))-ModelStartDate).days
 
-    Max  = len(df)
+    Max  = len(TMY)-1
 
     with h5py.File(str(ProjName) + ".hdf5", "r+") as f:
         Inputs = f['Inputs']
@@ -230,14 +231,13 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         PrjLif = Inputs.attrs['PrjLif'] * 365
         PrjEndDate = Initial['Date'] + timedelta(days=float(PrjLif))
         i = 1
-        while Curr['Date'] < PrjEndDate:
+        while Curr['Date'] != PrjEndDate:
             Curr['Date'] = Prev['Date'] + TimestepRevDelt(ProjName)
             EM = EffceftiveMultiplier(IDelta,i,Max,TMY,Poly)
             Curr['ProjectYear'] = float(np.abs(Initial['Date'] - Curr['Date']).days) /365
-            #print(Curr['ProjectYear'])
             Curr['ProjectTime'] = np.abs(Initial['Date'] - Curr['Date'])
-            Curr['PanelLifetime'] = Prev['PanelLifetime'] - (Curr['Date'] - Prev['Date']).days
-            Curr['InverterLifetime'] = Prev['InverterLifetime'] - (Curr['Date'] - Prev['Date']).days
+            Curr['PanelLifetime'] = Prev['PanelLifetime'] - ((Curr['Date'] - Prev['Date']).total_seconds()/86400)
+            Curr['InverterLifetime'] = Prev['InverterLifetime'] - ((Curr['Date'] - Prev['Date']).total_seconds()/3600)
             if Curr['PanelLifetime'] > 0:
                 Curr['PanelReplacementYear'] = False
             else:
@@ -314,7 +314,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             PVGen = df[:i,14]
             PPD = Inputs.attrs['Dcr']*0.01
             D = df[:i,0]
-            Curr['LCOE'] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
+            #Curr['LCOE'] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
             CurrS = pd.Series(Curr)
             CurrS = CurrS.to_numpy()
             df[i] = CurrS
@@ -322,6 +322,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             Prev['Date'] = Curr['Date']
             Prev = Curr.copy()
 
+        Curr['LCOE'] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
         Results(ProjName, Curr)
         df = pd.DataFrame(df)
         df.columns=CFCD
@@ -387,9 +388,8 @@ def ResPanel(Prop,ProjName,Data):
     return Val
 
 def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly):
-    TMYI = int(I + IDelta)
-    if TMYI >= Max-1:
-        TMYI = np.abs(TMYI-Max)
+    TMYI = ((I+IDelta) % (Max))
+    #print(TMYI)
     G = TMY['G(i)'].loc[TMYI]
     if G != 0:
         G = np.log(G * 118)

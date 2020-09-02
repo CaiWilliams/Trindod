@@ -1,2 +1,2 @@
 ProjectName,PreCalculated,Latitude,Longitude,PanTyp,PanCosInf,PanFlrPri,InvLif,PrjLif,Irr,ModSta,PrjTyp,PrjLoc,OprCosInf,InvCosInf,OprCos,RenCos,RenInf,TimStp,Tech
-1,y,55.953251,-3.188267,4678,-1,0.0245,10,20,High Risk,01/05/2019,Groundmount PV Array,Edinburgh,2.1,2.1,0.01,0.5,2.1,month,Disable
+1,y,55.953251,-3.188267,4678,-1,0.0245,10,20,High Risk,01/05/2019,Groundmount PV Array,Edinburgh,2.1,2.1,0.01,0.5,2.1,hour,Disable
