@@ -1,6 +1,7 @@
 import math
 import os
 from calendar import isleap
+import calendar
 from datetime import datetime, timedelta
 
 import h5py
@@ -33,25 +34,25 @@ def Setup(ProjName):
         'PanelLifetime': timedelta(weeks=float(Panel.attrs['Life']) * 52) ,
         'InverterLifetime': timedelta(weeks=float(Inputs.attrs['InvLif'] * 52)),
         'PanelReplacementYear' : False,
-        'PeakSunHours': IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)/SunHourDev(ProjName),
-        'CumilativeSunHours': IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)/SunHourDev(ProjName),
+        'PeakSunHours': IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)/SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y')),
+        'CumilativeSunHours': IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)/SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y')),
         'Burn-inAbsolute':(Panel.attrs['a'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName) * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName) + 1),
         'LongTermDegredation':(Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c'],
         'LongTermDegredationAbsolute':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01),
         'PanelStateofHealth':((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01),
         'PeakCapacity': EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)),
         'EffectiveCapacity': EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)),
-        'MonthlyYeild': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName)/SunHourDev(ProjName),
-        'PVGeneration': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName)/SunHourDev(ProjName) * ((EPC.attrs['PVSize'])+(EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))))/2,
+        'MonthlyYeild': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName)/SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y')),
+        'PVGeneration': IrrInit(Inputs.attrs['ModSta'],'Yeild',ProjName)/SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y')) * ((EPC.attrs['PVSize'])+(EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * IrrInit(Inputs.attrs['ModSta'],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))))/2,
         'CapitalCost': 0,#EPC['New Price']['Installation cost exc. panels'] + (1000 * EPC.attrs['PV Size'] * Panel.attrs['Cost, USD/Wp']),
         'RefurbishmentCost(Panels-PV)':0,
         'RefurbishmentCost(Panels-Other)':0,
         'RefurbishmentCost(Panels)':0,
         'PanelPriceThisYear': Panel.attrs['Cost'],
         'RefurbishmentCost(Inverter)':0,
-        'AnnualO&MCost': (1000 * EPC.attrs['PVSize'] * 0.01)/12 /SunHourDev(ProjName),
-        'LandRental': Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] /12 /SunHourDev(ProjName),
-        'TotalCost': ((1000 * EPC.attrs['PVSize'] * 0.01) / 12 /SunHourDev(ProjName)) + (Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / 12 /SunHourDev(ProjName)),
+        'AnnualO&MCost': (1000 * EPC.attrs['PVSize'] * 0.01)/12 /SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y')),
+        'LandRental': Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] /12 /SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y')),
+        'TotalCost': ((1000 * EPC.attrs['PVSize'] * 0.01) / 12 /SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y'))) + (Inputs.attrs['RenCos'] * EPC['New Price']['NewArea'] / 12 /SunHourDev(ProjName,datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y'))),
         'CostCheck': np.abs((EPC['New Price']['InstallationCostExcPanels'] + 1000 * EPC.attrs['PVSize'] * Panel.attrs['Cost'])/EPC.attrs['PVSize'])/1000,
         'LCOE':0,
         }
@@ -99,19 +100,20 @@ def TimeStepDev(ProjName):
             dev = 12
         elif Timestep == 'hour':
             if isleap(datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y').year) == True:
-                dev = 366 * 24
+                dev = 366 * 24 * 12
             else:
-                dev = 365 * 24
+                dev = 365 * 24 * 12
     return dev
 
-def SunHourDev(ProjName):
+def SunHourDev(ProjName,CD):
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Inputs = f['Inputs']
         Timestep = Inputs.attrs['TimStp'].lower()
         if Timestep == 'month':
             dev = 1
         elif Timestep == 'hour':
-            dev = 31 * 24
+            D = calendar.monthrange(CD.year,CD.month)[1]
+            dev = D * 24
     return dev
 
 #Converts date to datetime object
@@ -255,7 +257,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['PanelReplacementYear'] = True
                 Curr['PanelLifetime'] = Initial['PanelLifetime']
 
-            Curr['PeakSunHours'] = Irr(Curr['Date'],'PeakSunHours',ProjName)/SunHourDev(ProjName)
+            Curr['PeakSunHours'] = Irr(Curr['Date'],'PeakSunHours',ProjName)/SunHourDev(ProjName,Curr['Date'])
             Curr['CumilativeSunHours'] = Prev['CumilativeSunHours'] + Curr['PeakSunHours']
             Curr['Burn-inAbsolute'] = (Panel.attrs['a'] * Curr['CumilativeSunHours'] * Curr['CumilativeSunHours']) + (Panel.attrs['b'] * Curr['CumilativeSunHours'] + 1)
             Curr['LongTermDegredation'] = (Panel.attrs['m'] * Curr['CumilativeSunHours']) + Panel.attrs['c']
@@ -268,7 +270,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 Curr['PanelStateofHealth'] = Curr['Burn-inAbsolute']
                 Curr['PeakCapacity'] = EPC.attrs['PVSize'] * Curr['PanelStateofHealth']
 
-            Curr['MonthlyYeild'] = Irr(Curr['Date'],'Yeild',ProjName)/SunHourDev(ProjName)
+            Curr['MonthlyYeild'] = Irr(Curr['Date'],'Yeild',ProjName)/SunHourDev(ProjName,Curr['Date'])
 
             Curr['CapitalCost'] = 0
             
@@ -281,8 +283,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             Curr['EffectiveCapacity'] = Curr['PeakCapacity'] * EM
 
             Curr ['PVGeneration'] = Curr['MonthlyYeild'] * (Curr['EffectiveCapacity'] + Prev['EffectiveCapacity'])/2
-            Curr['AnnualO&MCost'] = Prev['AnnualO&MCost'] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/12/SunHourDev(ProjName)))
-            Curr['LandRental'] = Prev['LandRental'] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/12/SunHourDev(ProjName)))
+            Curr['AnnualO&MCost'] = Prev['AnnualO&MCost'] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName)))
+            Curr['LandRental'] = Prev['LandRental'] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName)))
 
             #if Curr['Date'] > PrjEndDate:
             #    Curr['PVGeneration'] = 0
@@ -337,7 +339,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         df = pd.DataFrame(df)
         df.columns=CFCD
         f.close()
-        df.to_excel(str(ProjName)+".xlsx")
+        #df.to_excel(str(ProjName)+".xlsx")
         df.to_hdf(str(ProjName) + ".hdf5",key='CashFlow', mode='a')  
     return
 
