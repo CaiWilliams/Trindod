@@ -134,11 +134,11 @@ def IrrInit(Date,Prop,ProjName):
 
 #Fetches property for selected month
 def Irr(Date,Prop,ProjName):
-    Month = Date.month - 1
+    Month = Date[:].month - 1
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Irr = f['Irradiance']
         P = np.asarray(Irr[Prop])
-    return P[Month]
+    return P[Month[:]]
 
 #Calculates and Inputs Burn-in coefficients
 def BurnInCoef(ProjName):
@@ -177,10 +177,9 @@ def MonthsTODatetime(X):
     return X
 
 #Calculates XNPV for selected rate, values and dates
-def xnpv(rate, values, dates):
+def xnpv(rate, values, D):
     if rate <= -1.0:
         return float('inf')
-    D = dates[:]/8760
     V = sum(values[:] / (1.0 + rate)**(D[:]))
     return V
 
@@ -290,13 +289,14 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
                 df[i,2] = df[0,2]
             i = i + 1
         i = 1
+
         IrrVec = np.vectorize(Irr)
         SHDVec = np.vectorize(SunHourDev)
         SumVec = np.vectorize(suma)
 
-        PSH = IrrVec(df[:,0],'PeakSunHours',ProjName)
-        SHD = SHDVec(ProjName,df[:,0])
-        YEL = IrrVec(df[:,0],'Yeild',ProjName)
+        PSH = Irr(df[:,0],'PeakSunHours',ProjName)
+        SHD = SunHourDev(ProjName,df[:,0])
+        YEL = Irr(df[:,0],'Yeild',ProjName)
 
         df[:,5] = PSH[:]/SHD[:]
         df[:,6] = np.cumsum(df[:,5])
@@ -309,10 +309,12 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         df[:,15] = 0
         #df[:,21] = df[0,21] + (1+(Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName))**range(len(df))
         #df[:,22] = df[0,22] + (1+(Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName))**range(len(df))
-        
+        EMi = np.array(len(df))
+        ID = np.linspace(0,len(df),len(df))
+        EMi = EffceftiveMultiplier(IDelta,ID,Max,TMY,Poly)
         while df[i-1,0] < PrjEndDate:
                     
-            EM = EffceftiveMultiplier(IDelta,i,Max,TMY,Poly)
+            EM = EMi[i]
 
             if df[i,6] > Panel.attrs['Burn-inPeakSunHours']:
                 df[i,11] = float(EPC.attrs['PVSize']) * (1 - float(Panel.attrs['Burn-in'].strip('%'))*0.01) * float(df[i,10])
@@ -359,20 +361,30 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             
             df[i,23]  = df[i,16] + df[i,18] + df[i,20] + df[i,21] + df[i,22]
             
-            TCost = df[:i,23]
-            PVGen = df[:i,14]
-            PPD = Inputs.attrs['Dcr']*0.01
-            D = df[:i,1]
+            #TCost = df[:i,23]
+            #PVGen = df[:i,14]
+            #PPD = Inputs.attrs['Dcr']*0.01
+            #D = df[:i,1]
 
-            df[i,25] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
+            #df[i,25] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
             #CurrS = pd.Series(Curr)
             #CurrS = CurrS.to_numpy()
             #df[i] = CurrS
 
             i = i + 1
             #Prev = Curr.copy()
-
+        
         #Results(ProjName, Curr)
+        TCost = np.zeros((len(df)-1,len(df)-1))
+        PVGen = np.zeros((len(df)-1,len(df)-1))
+        D = np.zeros((len(df)-1,len(df)-1))
+        for j in range(len(df)-2):
+            TCost[:j,j] = df[:j,23]
+            PVGen[:j,j] = df[:j,14]
+            D[:j,j] = df[:j,1]/8760
+        PPD = Inputs.attrs['Dcr']*0.01
+       #print(TCost[:])
+        df[:-1,25] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost[:,:],D[:,:]))) / xnpv(PPD,PVGen[:,:],D[:,:])
         df = pd.DataFrame(df)
         df.columns=CFCD
         f.close()
@@ -438,13 +450,15 @@ def ResPanel(Prop,ProjName,Data):
     return Val
 
 def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly):
-    TMYI = ((I+IDelta) % (Max))
-    G = TMY['G(i)'].loc[int(TMYI)]
-    if G != 0:
-        G = np.log(G * 118)
-    else:
-        return 1
-    G = Poly(G)
+    TMYI = np.round((I+IDelta) % (Max))
+    G = (TMY['G(i)'].loc[TMYI]).index
+    G = G.to_numpy()
+    for n in range(len(G)):
+        if G[n] != 0:
+            G[n] = np.log(G[n] * 118)
+        else:
+            G[n] = 1
+    G[:] = Poly(G[:])
     return G
 
 def suma(A,B):
