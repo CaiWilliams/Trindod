@@ -17,7 +17,6 @@ cycler==0.10.0
 DateTime==4.3
 et-xmlfile==1.0.1
 filelock==3.0.12
-FiPy==3.4.2.1
 future==0.18.2
 google==3.0.0
 gprof2dot==2019.11.30
