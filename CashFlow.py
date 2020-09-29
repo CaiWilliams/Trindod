@@ -78,7 +78,7 @@ def Setup(ProjName):
         InitialS = pd.Series(Initial)
         df = df.append(InitialS, ignore_index=True)
         dfA = df.to_numpy()
-        z = np.zeros([((Inputs.attrs['PrjLif']*8760)),(len(CFC)+1)])
+        z = np.zeros([((Inputs.attrs['PrjLif']*TimeStepDev(ProjName))),(len(CFC)+1)])
         dfA = np.append(dfA, z,axis=0)
         a = pd.DataFrame(dfA)
     return dfA, Initial
@@ -91,6 +91,10 @@ def TimestepRevDelt(ProjName):
             Rev = relativedelta(months=1)
         elif Timestep == 'hour':
             Rev = timedelta(hours=1)
+        elif Timestep == 'day':
+            Rev = timedelta(days=1)
+        elif Timestep == 'week':
+            Rev = timedelta(weeks=1)
     return Rev
 
 def TimeStepDev(ProjName):
@@ -101,9 +105,16 @@ def TimeStepDev(ProjName):
             dev = 12
         elif Timestep == 'hour':
             if isleap(datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y').year) == True:
-                dev = 366 * 24 * 12
+                dev = 366 * 24 
             else:
-                dev = 365 * 24 * 12
+                dev = 365 * 24 
+        elif Timestep == 'day':
+            if isleap(datetime.strptime(Inputs.attrs['ModSta'], '%d/%m/%Y').year) == True:
+                dev = 366
+            else:
+                dev = 365
+        elif Timestep == 'week':
+            dev = 52
     return dev
 
 def SunHourDev(ProjName,CD):
@@ -115,6 +126,55 @@ def SunHourDev(ProjName,CD):
         elif Timestep == 'hour':
             D = calendar.monthrange(CD.year,CD.month)[1]
             dev = D * 24
+        elif Timestep == 'day':
+            dev = calendar.monthrange(CD.year,CD.month)[1]
+        elif Timestep == 'week':
+            dev = 4
+    return dev
+
+def Timestepint(ProjName):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'month':
+            dev = 730
+        elif Timestep == 'hour':
+            dev = 1
+        elif Timestep == 'day':
+            dev = 24
+        elif Timestep == 'week':
+            dev = 168
+    return dev
+
+
+def CMRH(year, month):
+    D = calendar.monthrange(year,month)[1] * 24
+    return D
+
+def CMR(year, month):
+    D = calendar.monthrange(year,month)[1]
+    return D
+
+def SunHourDevArr(ProjName,CD):
+    year = map(DtY,CD)
+    year = list(year)
+    month = map(DtM,CD)
+    month = list(month)
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'month':
+            dev = np.ones(len(CD))
+        elif Timestep == 'hour':
+            D = map(CMRH,year,month)
+            D = list(D)
+            dev = D
+        elif Timestep == 'day':
+            D = map(CMR,year,month)
+            D = list(D)
+            dev = D
+        elif Timestep == 'week':
+            dev = 4
     return dev
 
 #Converts date to datetime object
@@ -131,10 +191,23 @@ def IrrInit(Date,Prop,ProjName):
         P = np.asarray(Irr[Prop])
     return P[Month]
 
+def DtM1(A):
+    A = A.month - 1
+    return A
+
+def DtM(A):
+    A = A.month 
+    return A
+
+def DtY(A):
+    A = A.year
+    return A 
 
 #Fetches property for selected month
 def Irr(Date,Prop,ProjName):
-    Month = Date[:].month - 1
+    #print(Date[:])
+    Month = map(DtM1,Date)
+    Month = list(Month)
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Irr = f['Irradiance']
         P = np.asarray(Irr[Prop])
@@ -211,12 +284,26 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             IrradianceStartDate = datetime.utcfromtimestamp(IrradianceStartDate.tolist()/1e9)
             Delta = ModelStartDate - IrradianceStartDate
             IDelta = Delta.days/((ModelStartDate+TimestepRevDelt(ProjName))-ModelStartDate).days
+        elif Inputs.attrs['TimStp'] == 'day':
+            TMY['time'] = pd.to_datetime(TMY['time'],format='%Y-%m-%d %H:%M:%S')
+            IrradianceStartDate = TMY['time'].values[0]
+            ModelStartDate = df[0,0]
+            IrradianceStartDate = datetime.utcfromtimestamp(IrradianceStartDate.tolist()/1e9)
+            Delta = ModelStartDate - IrradianceStartDate
+            IDelta = Delta.days/((ModelStartDate+TimestepRevDelt(ProjName))-ModelStartDate).days
+        elif Inputs.attrs['TimStp'] == 'week':
+            TMY['time'] = pd.to_datetime(TMY['time'],format='%Y-%m-%d %H:%M:%S')
+            IrradianceStartDate = TMY['time'].values[0]
+            ModelStartDate = df[0,0]
+            IrradianceStartDate = datetime.utcfromtimestamp(IrradianceStartDate.tolist()/1e9)
+            Delta = ModelStartDate - IrradianceStartDate
+            IDelta = Delta.days/((ModelStartDate+TimestepRevDelt(ProjName))-ModelStartDate).days
 
     Max  = len(TMY)-1
 
     with h5py.File(str(ProjName) + ".hdf5", "r+") as f:
         Inputs = f['Inputs']
-        Type = Inputs.attrs['Tech'].lower()
+        Type = str(Inputs.attrs['Tech']).lower()
         if Type == 'opv':
             TFile = 'Data/Panel/OPV.csv'
         elif Type == 'pvk':
@@ -225,8 +312,10 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             TFile = 'Data/Panel/DSSC.csv'
         elif Type == 'xsi':
             TFile = 'Data/Panel/XSI.csv'
-        else:
+        elif Type == 'disable':
             TFile = 'Data/Panel/Disable.csv'
+        else:
+            TFile = 'Data/Panel/'+ Type + '.csv'
     f.close()
 
     Params = pd.read_csv(TFile,header=None)
@@ -276,28 +365,24 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         #PSH = np.zeros(len(df))
         #SHD = np.zeros(len(df))
         df[1,0] = df[0,0] + TimestepRevDelt(ProjName)
+        TSRD = TimestepRevDelt(ProjName)
         while df[i-1,0] < PrjEndDate:
-            df[i,0] = df[i-1,0] + TimestepRevDelt(ProjName)
+            df[i,0] = df[i-1,0] + TSRD
             df[i,1] = (df[i,0] - df[0,0]).days /365
-            #df[i,2] = (df[i-1,0] - df[i,0]).total_seconds()/3600
-            df[i,2] = df[i-1,2] - ((df[i,0] - df[i-1,0]).total_seconds()/86400)
-            df[i,3] = df[i-1,3] - ((df[i,0] - df[i-1,0]).total_seconds()/604800)
+            df[i,2] = df[i-1,2] - (df[i,0] - df[i-1,0]).total_seconds()/86400
+            df[i,3] = df[i-1,3] - ((df[i,0] - df[i-1,0]).total_seconds()/86400)
             if df[i,2] > 0:
                 df[i,4] = False
             else:
                 df[i,4] = True
                 df[i,2] = df[0,2]
+            if df[i,3] < 0:
+                df[i,3] = df[0,3]
             i = i + 1
         i = 1
-
-        IrrVec = np.vectorize(Irr)
-        SHDVec = np.vectorize(SunHourDev)
-        SumVec = np.vectorize(suma)
-
         PSH = Irr(df[:,0],'PeakSunHours',ProjName)
-        SHD = SunHourDev(ProjName,df[:,0])
+        SHD = SunHourDevArr(ProjName,df[:,0])
         YEL = Irr(df[:,0],'Yeild',ProjName)
-
         df[:,5] = PSH[:]/SHD[:]
         df[:,6] = np.cumsum(df[:,5])
         df[:,7] = (Panel.attrs['a'] * df[:,6] * df[:,6]) + (Panel.attrs['b'] * df[:,6] + 1)
@@ -311,80 +396,75 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         #df[:,22] = df[0,22] + (1+(Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName))**range(len(df))
         EMi = np.array(len(df))
         ID = np.linspace(0,len(df),len(df))
-        EMi = EffceftiveMultiplier(IDelta,ID,Max,TMY,Poly)
+        EMi = EffceftiveMultiplier(IDelta,ID,Max,TMY,Poly,ProjName)
+        
+        
+        BurninTest = df[:,6] > Panel.attrs['Burn-inPeakSunHours']
+        for n in np.where(BurninTest == True)[0]:
+            df[n,11] = float(EPC.attrs['PVSize']) * (1 - float(Panel.attrs['Burn-in'].strip('%'))*0.01) * float(df[n,10])
+        for n in np.where(BurninTest == False)[0]:
+            df[n,11] = EPC.attrs['PVSize'] * df[n,10]
+
+        df[:,12] = df[:,11] * EMi[:]
+
+        df[:,17] = 0
+        try:
+            for n in np.where(df[:,4] == True):
+                d = df[:,1]
+                d = d[n]
+                df[n,16] = 1000 * EPC.attrs['PVSize'] * df[n,19]
+                df[n,17] = (np.abs(EPC['New Price']['NewPrice']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((d.days/365) - 1))
+                df[n,7] = Irr(df[n,0],'PeakSunHours',ProjName)
+                df[n,8] = (Panel.attrs['a'] * Irr(df[n,0],'PeakSunHours',ProjName) * Irr(df[n,0],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(df[n,0],'PeakSunHours',ProjName) + 1)
+                df[n,9] = (Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']
+                df[n,10] = ((Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
+                df[n,11] = ((Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
+                df[n,12] = EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(df[i,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))
+                df[n,13] = df[n,12] * EMi[n]
+                df[n,15] = Irr(df[n,0],'Yeild',ProjName) * ((EPC.attrs['PVSize']) + df[n,13])/2
+                if df[n,10] > 1:
+                    df[n,10] = df[n,7]
+                    df[n,12] = EPC.attrs['PVSize'] * df[i,8]
+                    df[n,13] = df[n,12] * EMi[n]
+                    df[n,15] = df[0,14] * np.average([df[n-1,13], df[n,13]])
+        except:
+            print("")
+
+        df[:,20] = 0 
+
+        PanLifeTest = np.where(df[:,3] < Timestepint(ProjName)/24)[0]
+        for n in list(PanLifeTest):
+            df[n+1,3] = df[0,3]
+            df[n+1,20] = (np.abs(EPC['New Price']['InstallationCostExcPanels']) * np.abs(EPC['New Price']['InverterCostAsPercentofCiepPrice'])) * np.power((1 + (Inputs.attrs['InvCosInf']*0.01)),int(df[n+1,1]))
+        TSD = TimeStepDev(ProjName)
         while df[i-1,0] < PrjEndDate:
                     
             EM = EMi[i]
 
-            if df[i,6] > Panel.attrs['Burn-inPeakSunHours']:
-                df[i,11] = float(EPC.attrs['PVSize']) * (1 - float(Panel.attrs['Burn-in'].strip('%'))*0.01) * float(df[i,10])
-            else:
-                df[i,11] = EPC.attrs['PVSize'] * df[i,10]
-            
             df[i,19] = Panel.attrs['Cost'] + ((df[i-1,19] - Panel.attrs['Cost'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/12))
+
+            df[i,18] = df[i,16] + df[i,17]
             
-            df[i,18] = df[i,16]  + df[i,17]
-
-            df[i,24] = 0
-
-            df[i,12] = df[i,11] * EM
-
-            df[i,14] = df[i,12] * (df[i,13] + df[i-1,13])/2
-            df[i,21] = df[i-1,21] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName)))
-            df[i,22] = df[i-1,22] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName)))
-    
-            if df[i,4] == True:
-                df[i,16] = 1000 * EPC.attrs['PVSize'] * df[i,19]
-                df[i,17] = (np.abs(EPC['New Price']['NewPrice']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((df[i,1].days/365) - 1))
-                df[i,7] = Irr(df[i,0],'PeakSunHours',ProjName)
-                df[i,8] = (Panel.attrs['a'] * Irr(df[i,0],'PeakSunHours',ProjName) * Irr(df[i,0],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(df[i,0],'PeakSunHours',ProjName) + 1)
-                df[i,9] = (Panel.attrs['m'] * Irr(df[i,0],'PeakSunHours',ProjName)) + Panel.attrs['c']
-                df[i,10] = ((Panel.attrs['m'] * Irr(df[i,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
-                df[i,11] = ((Panel.attrs['m'] * Irr(df[i,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
-                df[i,12] = EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(df[i,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))
-                df[i,13] = df[i,12] * EM
-                df[i,15] = Irr(df[i,0],'Yeild',ProjName) * ((EPC.attrs['PVSize']) + df[i,13])/2
-                if df[i,10] > 1:
-                    df[i,10] = df[i,7]
-                    df[i,12] = EPC.attrs['PVSize'] * df[i,8]
-                    df[i,13] = df[i,12] * EM
-                df[i,15] = df[0,14] * np.average([df[i-1,13], df[i,13]])
-            else:
-                df[i,17] = 0
-                df[i,17] = 0
-
-            if df[i,4] < 0: 
-                df[i,4] = df[0,4]
-                df[i,20] = (np.abs(EPC['New Price']['InstallationCostExcPanels']) * np.abs(EPC['New Price']['InverterCostAsPercentofCiepPrice'])) * np.power((1 + (Inputs.attrs['InvCosInf']*0.01)),math.ceil(df[i,1]/3600/365))
-            else:
-                df[i,20] = 0
+            df[i,14] = df[i,13] * (df[i,12] + df[i-1,12])/2
+            df[i,21] = df[i-1,21] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TSD))
+            df[i,22] = df[i-1,22] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TSD))
             
-            df[i,23]  = df[i,16] + df[i,18] + df[i,20] + df[i,21] + df[i,22]
             
-            #TCost = df[:i,23]
-            #PVGen = df[:i,14]
-            #PPD = Inputs.attrs['Dcr']*0.01
-            #D = df[:i,1]
-
-            #df[i,25] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost,D))) / xnpv(PPD,PVGen,D)
-            #CurrS = pd.Series(Curr)
-            #CurrS = CurrS.to_numpy()
-            #df[i] = CurrS
-
             i = i + 1
-            #Prev = Curr.copy()
-        
-        #Results(ProjName, Curr)
-        TCost = np.zeros((len(df)-1,len(df)-1))
-        PVGen = np.zeros((len(df)-1,len(df)-1))
-        D = np.zeros((len(df)-1,len(df)-1))
-        for j in range(len(df)-2):
+        df[:,23]  = df[:,16] + df[:,18] + df[:,20] + df[:,21] + df[:,22]
+        TCost = np.zeros((len(df),len(df)))
+        PVGen = np.zeros((len(df),len(df)))
+        D = np.zeros((len(df),len(df)))
+        for j in range(len(df)):
             TCost[:j,j] = df[:j,23]
             PVGen[:j,j] = df[:j,14]
-            D[:j,j] = df[:j,1]/8760
+            D[:j,j] = df[:j,1]
         PPD = Inputs.attrs['Dcr']*0.01
        #print(TCost[:])
-        df[:-1,25] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost[:,:],D[:,:]))) / xnpv(PPD,PVGen[:,:],D[:,:])
+        #print(((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost[:,:],D[:,:]))))
+        #print(xnpv(PPD,PVGen[:,:],D[:,:]))
+        df[:,25] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost[:,:],D[:,:]))) / xnpv(PPD,PVGen[:,:],D[:,:])
+        Results(ProjName, df[-1,:])
         df = pd.DataFrame(df)
         df.columns=CFCD
         f.close()
@@ -392,7 +472,6 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         df.to_excel(str(ProjName)+".xlsx")
         df.to_hdf(str(ProjName) + ".hdf5",key='CashFlow', mode='a')  
     return
-
 def Results(ProjName,Data):
     Headers = {
         'Outputs': ResOutputs,
@@ -416,7 +495,9 @@ def Results(ProjName,Data):
     return
 
 def ResOutputs(Prop,ProjName,Data):
-    Val = Data[Prop]
+    Key = ['Date','ProjectTime','PanelLifetime','InverterLifetime','PanelReplacementYear','PeakSunHours','CumilativeSunHours','Burn-inAbsolute','LongTermDegredation','LongTermDegredationAbsolute','PanelStateofHealth','PeakCapacity','EffectiveCapacity','MonthlyYeild','PVGeneration','CapitalCost','RefurbishmentCost(Panels-PV)','RefurbishmentCost(Panels-Other)','RefurbishmentCost(Panels)','PanelPriceThisYear','RefurbishmentCost(Inverter)','AnnualO&MCost','LandRental','TotalCost','CostCheck','LCOE','ProjectYear']
+    I = Key.index(Prop)
+    Val = Data[I]
     return Val
 
 def ResInputs(Prop,ProjName,Data):
@@ -449,17 +530,34 @@ def ResPanel(Prop,ProjName,Data):
         Val = Panel.attrs[Prop]
     return Val
 
-def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly):
-    TMYI = np.round((I+IDelta) % (Max))
-    G = (TMY['G(i)'].loc[TMYI]).index
-    G = G.to_numpy()
-    for n in range(len(G)):
-        if G[n] != 0:
-            G[n] = np.log(G[n] * 118)
+def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly,ProjName):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        #TMY = TMY.replace(0,np.NaN)
+        if Timestep == 'hour':
+            TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
+            G = (TMY['G(i)'].loc[TMYI])
         else:
+            TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
+            TMYI2 = (TMYI[:] + Timestepint(ProjName)) % (Max)
+            TMYI = TMYI.astype(int)
+            TMYI2 = TMYI2.astype(int)
+            G = np.zeros(len(TMYI))
+            TMY = TMY['G(i)']
+            for i in range(len(TMYI)):
+                G[i] = TMY.iloc[TMYI[i]:TMYI2[i]].mean()
+                if TMYI[i] > TMYI2[i]:
+                    G1 = TMY.iloc[TMYI[i]:]
+                    G2 = TMY.iloc[:TMYI2[i]]
+                    G[i] = G1.append(G2, ignore_index=True).mean()
+    #G = G.to_numpy()
+    for n in range(len(G)):
+        if G[n] == 0:
             G[n] = 1
+    G = np.log(G)
     G[:] = Poly(G[:])
     return G
-
+ 
 def suma(A,B):
     return A+B

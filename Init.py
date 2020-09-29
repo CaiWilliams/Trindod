@@ -78,7 +78,7 @@ def SaveProject(ProjName,PreCal):
         TMY = io.StringIO(r.content.decode('utf-8'))
         TMY = pd.read_csv(TMY,skipfooter=9,skiprows=[0,1,2,3,4,5,6,7],engine='python')
         for n in TMY.index:
-            TMY.at[n,'time'] = datetime.strptime(TMY.at[n,'time'], '%Y%m%d:%H11').replace(year=datetime.strptime(Inputs.attrs['ModSta'],'%d/%m/%Y').year)
+            TMY.at[n,'time'] = datetime.strptime(TMY.at[n,'time'][:-2], '%Y%m%d:%H').replace(year=datetime.strptime(Inputs.attrs['ModSta'],'%d/%m/%Y').year)
     f.close() 
     #hdf = pd.HDFStore(ProjName+'.hdf5')
     #hdf.put('TMY',TMY)
