@@ -320,7 +320,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
 
     Params = pd.read_csv(TFile,header=None)
     Params = Params.loc[1].values[1:]
-    Poly = np.polynomial.Polynomial(Params)
+    Poly = Params
 
     CFC = ['Date','ProjectTime','PanelLifetime','InverterLifetime','PanelReplacementYear','PeakSunHours','CumilativeSunHours','Burn-inAbsolute','LongTermDegredation','LongTermDegredationAbsolute','PanelStateofHealth','PeakCapacity','EffectiveCapacity','MonthlyYeild','PVGeneration','CapitalCost','RefurbishmentCost(Panels-PV)','RefurbishmentCost(Panels-Other)','RefurbishmentCost(Panels)','PanelPriceThisYear','RefurbishmentCost(Inverter)','AnnualO&MCost','LandRental','TotalCost','CostCheck','LCOE','ProjectYear']
     CFCD = ['Date','Project Time','Panel Lifetime','Inverter Lifetime','Panel Replacement Year','Peak Sun Hours','Cumilative Sun Hours','Burn in (absolute)','Long Term Degredation','Long Term Degredation (abs after burn in)','Panel State of Health','Peak Capacity','Effective Capacity','Monthly Yeild','PV Generation','Capital Cost','Refurbishment Cost (Panels - PV)','Refurbishment Cost (Panels - Other)','Refurbishment Cost (Panels)','Panel Price This Year','Refurbishment Cost (Inverter)','Annual O&M Cost','Land Rental','Total Cost','Cost Check','LCOE','Project Year']
@@ -469,8 +469,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         df.columns=CFCD
         f.close()
 
-        df.to_excel(str(ProjName)+".xlsx")
-        df.to_hdf(str(ProjName) + ".hdf5",key='CashFlow', mode='a')  
+        #df.to_excel(str(ProjName)+".xlsx")
+        #df.to_hdf(str(ProjName) + ".hdf5",key='CashFlow', mode='a')  
     return
 def Results(ProjName,Data):
     Headers = {
@@ -530,6 +530,9 @@ def ResPanel(Prop,ProjName,Data):
         Val = Panel.attrs[Prop]
     return Val
 
+def richards(x,A,K,C,Q,B,v,x0):
+    return A +((K-A)/(C + Q * np.exp(-B * (x-x0))) ** (1 / v))
+
 def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly,ProjName):
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Inputs = f['Inputs']
@@ -555,8 +558,7 @@ def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly,ProjName):
     for n in range(len(G)):
         if G[n] == 0:
             G[n] = 1
-    G = np.log(G)
-    G[:] = Poly(G[:])
+    G[:] = richards(G[:],Poly[0],Poly[1],Poly[2],Poly[3],Poly[4],Poly[5],Poly[6])
     return G
  
 def suma(A,B):
