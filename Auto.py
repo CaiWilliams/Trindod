@@ -67,7 +67,7 @@ def ProjectSetup(ProjName,PreCalc):
             name = file
             name = name.split('.')
             name = name[0]
-            df = pd.read_csv('Data/Location/'+file)
+            df = pd.read_csv('Data/Location/'+file,header=None)
             df.to_csv('Temp.csv')
     f.close()
     return

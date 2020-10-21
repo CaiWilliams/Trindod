@@ -63,7 +63,7 @@ def LocProps(ProjName):
     return
 
 def SaveProject(ProjName,PreCal):
-    LocDat = pd.read_csv('Temp.csv',header=None,index_col=False)
+    LocDat = pd.read_csv('Temp.csv')
     Yeild = LocDat.loc[0].values[1:]
     Peak = LocDat.loc[1].values[1:]
     lat = LocDat.loc[2].values[1]
@@ -76,7 +76,7 @@ def SaveProject(ProjName,PreCal):
         tilt,azimuth = LocProps(ProjName)
         r = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?'+'lat=' +str(lat) + '&lon='+str(lon) + '&angle='+str(tilt)+'&aspect='+str(azimuth)+'&startyear=2015&endyear=2015')
         TMY = io.StringIO(r.content.decode('utf-8'))
-        TMY = pd.read_csv(TMY,skipfooter=9,skiprows=[0,1,2,3,4,5,6,7],engine='python')
+        TMY = pd.read_csv(TMY,skipfooter=9,skiprows=[0,1,2,3,4,5,6,7],engine='python', sep=',', error_bad_lines=False,usecols=['time','G(i)'])
         for n in TMY.index:
             TMY.at[n,'time'] = datetime.strptime(TMY.at[n,'time'][:-2], '%Y%m%d:%H').replace(year=datetime.strptime(Inputs.attrs['ModSta'],'%d/%m/%Y').year)
     f.close() 

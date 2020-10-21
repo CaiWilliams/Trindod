@@ -3,9 +3,10 @@ import os
 from calendar import isleap
 import calendar
 from datetime import datetime, timedelta
+from numba import jit
 
 import h5py
-import numexpr
+#import numexpr
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import *
@@ -147,13 +148,36 @@ def Timestepint(ProjName):
     return dev
 
 
-def CMRH(year, month):
-    D = calendar.monthrange(year,month)[1] * 24
+def CMRH(year,month):
+    D = calendar.monthrange(year,month)[1] * 12
     return D
 
 def CMR(year, month):
     D = calendar.monthrange(year,month)[1]
     return D
+
+def SHFetch(IDelta,I,Max,TMY,ProjName):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'hour':
+            TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
+            G = (TMY['G(i)'].loc[TMYI])
+        else:
+            TMY = TMY.replace(0,np.NaN)
+            TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
+            TMYI2 = (TMYI[:] + Timestepint(ProjName)) % (Max)
+            TMYI = TMYI.astype(int)
+            TMYI2 = TMYI2.astype(int)
+            G = np.zeros(len(TMYI))
+            TMY = TMY['G(i)']
+            for i in range(len(TMYI)):
+                G[i] = TMY.iloc[TMYI[i]:TMYI2[i]].mean()
+                if TMYI[i] > TMYI2[i]:
+                    G1 = TMY.iloc[TMYI[i]:]
+                    G2 = TMY.iloc[:TMYI2[i]]
+                    G[i] = G1.append(G2, ignore_index=True).mean()
+    return G
 
 def SunHourDevArr(ProjName,CD):
     year = map(DtY,CD)
@@ -167,6 +191,45 @@ def SunHourDevArr(ProjName,CD):
             dev = np.ones(len(CD))
         elif Timestep == 'hour':
             D = map(CMRH,year,month)
+            D = list(D)
+            dev = D
+        elif Timestep == 'day':
+            D = map(CMR,year,month)
+            D = list(D)
+            dev = D
+        elif Timestep == 'week':
+            dev = 4
+    return dev
+
+def SunHourDevArr2(IDelta,ID,Max,TMY,ProjName,CD,II):
+    Dates = TMY["time"]
+    for i in range(len(TMY)):
+        Dates[i] = TMY["time"][i].month
+    TMY["time"] = Dates
+    SH = np.zeros(12)
+    I = np.zeros(12)
+    IrrA = II
+    for i in range(1,13):
+        IrrC = TMY.loc[TMY["time"] == i]
+        IrrB = IrrC["G(i)"].astype('bool')
+        IrrC = IrrC["G(i)"]
+        I[i-1] = np.sum(IrrC)
+        SH[i-1] = np.sum(IrrB)
+    year = map(DtY,CD)
+    year = list(year)
+    month = map(DtM,CD)
+    month = list(month)
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'month':
+            dev = np.ones(len(CD))
+        elif Timestep == 'hour':
+            D = np.zeros(len(month))
+            for i in range(len(month)):
+                #D[i] = calendar.monthrange(year[i],month[i])[1]
+                D[i] = II[i] * (SH[month[i]-1] /  I[month[i]-1])
+                #print(D[i])
             D = list(D)
             dev = D
         elif Timestep == 'day':
@@ -206,12 +269,19 @@ def DtY(A):
 #Fetches property for selected month
 def Irr(Date,Prop,ProjName):
     #print(Date[:])
-    Month = map(DtM1,Date)
-    Month = list(Month)
+    #print(Date)
+    try:
+        Month = map(DtM1,Date)
+        Month = list(Month)
+    except:
+        Month = Date.month - 1
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Irr = f['Irradiance']
         P = np.asarray(Irr[Prop])
-    return P[Month[:]]
+    try:
+        return P[Month[:]]
+    except:
+        return P[Month]
 
 #Calculates and Inputs Burn-in coefficients
 def BurnInCoef(ProjName):
@@ -381,23 +451,55 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             i = i + 1
         i = 1
         PSH = Irr(df[:,0],'PeakSunHours',ProjName)
-        SHD = SunHourDevArr(ProjName,df[:,0])
         YEL = Irr(df[:,0],'Yeild',ProjName)
+        EMi = np.array(len(df))
+        ID = np.linspace(0,len(df),len(df))
+        SHD = SunHourDevArr(ProjName,df[:,0])
+
+        df[:,26] = IrrFetch(IDelta,ID,Max,TMY,ProjName)
+        SHD2 = SunHourDevArr2(IDelta,ID,Max,TMY,ProjName,df[:,0],df[:,26])
+        EMi = EffceftiveMultiplier(IDelta,ID,Max,TMY,Poly,ProjName)
+
+         #/ np.max(IrrFetch(IDelta,ID,Max,TMY,ProjName))
+
         df[:,5] = PSH[:]/SHD[:]
         df[:,6] = np.cumsum(df[:,5])
+
+        for n in np.where(df[:,4] == True)[0]:
+            d = df[:,1]
+            d = d[n]
+            df[n,16] = 1000 * EPC.attrs['PVSize'] * df[n,19]
+            df[n,17] = (np.abs(EPC['New Price']['NewPrice']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((d/365) - 1))
+            df[n,6] = Irr(df[n,0],'PeakSunHours',ProjName) 
+            df[n:,6] = np.cumsum(df[n:,5])
+            df[n,7] = (Panel.attrs['a'] * Irr(df[n,0],'PeakSunHours',ProjName) * Irr(df[n,0],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(df[n,0],'PeakSunHours',ProjName) + 1)
+            df[n,8] = (Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']
+            df[n,9] = ((Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
+            df[n,10] = ((Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
+            df[n,11] = EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(df[i,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))
+            df[n,12] = df[n,11] * EMi[n]
+            df[n,14] = Irr(df[n,0],'Yeild',ProjName) * ((EPC.attrs['PVSize']) + df[n,13])/2
+            if df[n,10] > 1:
+                df[n,10] = df[n,7]
+                df[n,12] = EPC.attrs['PVSize'] * df[i,8]
+                df[n,13] = df[n,12] * EMi[n]
+                df[n,15] = df[0,14] * np.average([df[n-1,13], df[n,13]])
+
+        #df[:,5] = PSH[:]/SHD[:]
+        #df[:,6] = np.cumsum(df[:,5])
+
         df[:,7] = (Panel.attrs['a'] * df[:,6] * df[:,6]) + (Panel.attrs['b'] * df[:,6] + 1)
         df[:,8] = (Panel.attrs['m'] * df[:,6]) + Panel.attrs['c']
         df[:,9] = df[:,8] + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
         df[:,10] = df[:,9]
         df[:,10] = np.where(df[:,10]>1,df[:,7],df[:,9])
-        df[:,13] = YEL[:]/SHD[:]
+        df[:,13] =  SHD2[:]
         df[:,15] = 0
         #df[:,21] = df[0,21] + (1+(Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName))**range(len(df))
         #df[:,22] = df[0,22] + (1+(Inputs.attrs['OprCosInf']*0.01)/TimeStepDev(ProjName))**range(len(df))
-        EMi = np.array(len(df))
-        ID = np.linspace(0,len(df),len(df))
-        EMi = EffceftiveMultiplier(IDelta,ID,Max,TMY,Poly,ProjName)
         
+        
+
         
         BurninTest = df[:,6] > Panel.attrs['Burn-inPeakSunHours']
         for n in np.where(BurninTest == True)[0]:
@@ -405,30 +507,8 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         for n in np.where(BurninTest == False)[0]:
             df[n,11] = EPC.attrs['PVSize'] * df[n,10]
 
-        df[:,12] = df[:,11] * EMi[:]
+        df[:,12] = df[:,11] * EMi[:] 
 
-        df[:,17] = 0
-        try:
-            for n in np.where(df[:,4] == True):
-                d = df[:,1]
-                d = d[n]
-                df[n,16] = 1000 * EPC.attrs['PVSize'] * df[n,19]
-                df[n,17] = (np.abs(EPC['New Price']['NewPrice']) * 0.1) * np.power((1+(Inputs.attrs['InvCosInf']*0.01)),((d.days/365) - 1))
-                df[n,7] = Irr(df[n,0],'PeakSunHours',ProjName)
-                df[n,8] = (Panel.attrs['a'] * Irr(df[n,0],'PeakSunHours',ProjName) * Irr(df[n,0],'PeakSunHours',ProjName)) + (Panel.attrs['b'] * Irr(df[n,0],'PeakSunHours',ProjName) + 1)
-                df[n,9] = (Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']
-                df[n,10] = ((Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
-                df[n,11] = ((Panel.attrs['m'] * Irr(df[n,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01)
-                df[n,12] = EPC.attrs['PVSize'] * (1 - (float(Panel.attrs['Burn-in'].strip('%'))*0.01)) * (((Panel.attrs['m'] * Irr(df[i,0],'PeakSunHours',ProjName)) + Panel.attrs['c']) + (float(Panel.attrs['Burn-in'].strip('%'))*0.01))
-                df[n,13] = df[n,12] * EMi[n]
-                df[n,15] = Irr(df[n,0],'Yeild',ProjName) * ((EPC.attrs['PVSize']) + df[n,13])/2
-                if df[n,10] > 1:
-                    df[n,10] = df[n,7]
-                    df[n,12] = EPC.attrs['PVSize'] * df[i,8]
-                    df[n,13] = df[n,12] * EMi[n]
-                    df[n,15] = df[0,14] * np.average([df[n-1,13], df[n,13]])
-        except:
-            print("")
 
         df[:,20] = 0 
 
@@ -439,15 +519,17 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         TSD = TimeStepDev(ProjName)
         while df[i-1,0] < PrjEndDate:
                     
-            EM = EMi[i]
+            #EM = EMi[i]
 
             df[i,19] = Panel.attrs['Cost'] + ((df[i-1,19] - Panel.attrs['Cost'])*(1 - (Inputs.attrs['Dcr'] * 0.01)/12))
 
             df[i,18] = df[i,16] + df[i,17]
             
-            df[i,14] = df[i,13] * (df[i,12] + df[i-1,12])/2
+            df[i,14] = df[i,13] * ((df[i,12] + df[i-1,12])/2) #* df[i,26]
             df[i,21] = df[i-1,21] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TSD))
             df[i,22] = df[i-1,22] * (1 + ((Inputs.attrs['OprCosInf']*0.01)/TSD))
+
+            
             
             
             i = i + 1
@@ -459,17 +541,20 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             TCost[:j,j] = df[:j,23]
             PVGen[:j,j] = df[:j,14]
             D[:j,j] = df[:j,1]
+        #print(TCost)
         PPD = Inputs.attrs['Dcr']*0.01
        #print(TCost[:])
         #print(((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost[:,:],D[:,:]))))
         #print(xnpv(PPD,PVGen[:,:],D[:,:]))
         df[:,25] = ((np.abs(EPC['New Price']['InstallationCostExcPanels']) + (EPC.attrs['PVSize']*Panel.attrs['Cost']*1000)) + np.abs(xnpv(PPD,TCost[:,:],D[:,:]))) / xnpv(PPD,PVGen[:,:],D[:,:])
+
+        
         Results(ProjName, df[-1,:])
         df = pd.DataFrame(df)
         df.columns=CFCD
         f.close()
 
-        #df.to_excel(str(ProjName)+".xlsx")
+        df.to_excel(str(ProjName)+".xlsx")
         #df.to_hdf(str(ProjName) + ".hdf5",key='CashFlow', mode='a')  
     return
 def Results(ProjName,Data):
@@ -533,15 +618,15 @@ def ResPanel(Prop,ProjName,Data):
 def richards(x,A,K,C,Q,B,v,x0):
     return A +((K-A)/(C + Q * np.exp(-B * (x-x0))) ** (1 / v))
 
-def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly,ProjName):
+def IrrFetch(IDelta,I,Max,TMY,ProjName):
     with h5py.File(str(ProjName) + ".hdf5", "a") as f:
         Inputs = f['Inputs']
         Timestep = Inputs.attrs['TimStp'].lower()
-        #TMY = TMY.replace(0,np.NaN)
         if Timestep == 'hour':
             TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
             G = (TMY['G(i)'].loc[TMYI])
         else:
+            TMY = TMY.replace(0,np.NaN)
             TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
             TMYI2 = (TMYI[:] + Timestepint(ProjName)) % (Max)
             TMYI = TMYI.astype(int)
@@ -554,11 +639,41 @@ def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly,ProjName):
                     G1 = TMY.iloc[TMYI[i]:]
                     G2 = TMY.iloc[:TMYI2[i]]
                     G[i] = G1.append(G2, ignore_index=True).mean()
-    #G = G.to_numpy()
-    for n in range(len(G)):
-        if G[n] == 0:
-            G[n] = 1
-    G[:] = richards(G[:],Poly[0],Poly[1],Poly[2],Poly[3],Poly[4],Poly[5],Poly[6])
+    return G
+
+def EffceftiveMultiplier(IDelta,I,Max,TMY,Poly,ProjName):
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'hour':
+            TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
+            G = (TMY['G(i)'].loc[TMYI])
+            G = G.to_numpy()
+            for i in range(len(TMYI)):
+                if G[i] != 0:
+                    G[i] = richards(G[i],Poly[0],Poly[1],Poly[2],Poly[3],Poly[4],Poly[5],Poly[6])
+                else:
+                    G[i] = 0 
+        else:
+            TMY = TMY.replace(0,np.NaN)
+            TMYI = np.round(((I*Timestepint(ProjName))+(IDelta*Timestepint(ProjName))) % (Max))
+            TMYI2 = (TMYI[:] + Timestepint(ProjName)) % (Max)
+            TMYI = TMYI.astype(int)
+            TMYI2 = TMYI2.astype(int)
+            G = np.zeros(len(TMYI))
+            TMY = TMY['G(i)']
+            #G = G.to_numpy()
+            for i in range(len(TMYI)):
+                G[i] = TMY.iloc[TMYI[i]:TMYI2[i]].mean()
+                if TMYI[i] > TMYI2[i]:
+                    G1 = TMY.iloc[TMYI[i]:]
+                    G2 = TMY.iloc[:TMYI2[i]]
+                    G[i] = G1.append(G2, ignore_index=True).mean()
+                if G[i] != 0:
+                    G[i] = richards(G[i],Poly[0],Poly[1],Poly[2],Poly[3],Poly[4],Poly[5],Poly[6])
+                else:
+                    G[i] = 0 
+    #print(G)
     return G
  
 def suma(A,B):
