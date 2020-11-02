@@ -1,5 +1,12 @@
-ProjectName,PreCalculated,Latitude,Longitude,PanTyp,PanCosInf,PanFlrPri,InvLif,PrjLif,Irr,ModSta,PrjTyp,PrjLoc,OprCosInf,InvCosInf,OprCos,RenCos,RenInf,TimStp,Tech
-SH100,y,59.321981,18.149414,4436,-1,0.245,10,1,Medium Risk,01/05/2019,Groundmount PV Array,Stockholm,2.1,2.1,0.01,0.5,2.1,hour,100
-SD100,y,59.321981,18.149414,4436,-1,0.245,10,1,Medium Risk,01/05/2019,Groundmount PV Array,Stockholm,2.1,2.1,0.01,0.5,2.1,day,100
-SH50,y,59.321981,18.149414,4436,-1,0.245,10,1,Medium Risk,01/05/2019,Groundmount PV Array,Stockholm,2.1,2.1,0.01,0.5,2.1,hour,50
-SD50,y,59.321981,18.149414,4436,-1,0.245,10,1,Medium Risk,01/05/2019,Groundmount PV Array,Stockholm,2.1,2.1,0.01,0.5,2.1,day,50
+ProjectName,PanTyp,PanCosInf,PanFlrPri,InvLif,PrjLif,Irr,ModSta,PrjTyp,PrjLoc,OprCosInf,InvCosInf,OprCos,RenCos,RenInf,TimStp,Tech
+1,4436,-1,0.245,10,20,Medium Risk,01/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,4
+2,4436,-1,0.245,10,20,Medium Risk,02/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,14
+3,4436,-1,0.245,10,20,Medium Risk,03/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,24
+4,4436,-1,0.245,10,20,Medium Risk,04/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,34
+5,4436,-1,0.245,10,20,Medium Risk,05/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,44
+6,4436,-1,0.245,10,20,Medium Risk,06/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,54
+7,4436,-1,0.245,10,20,Medium Risk,07/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,64
+8,4436,-1,0.245,10,20,Medium Risk,08/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,74
+9,4436,-1,0.245,10,20,Medium Risk,09/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,84
+10,4436,-1,0.245,10,20,Medium Risk,10/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,94
+11,4436,-1,0.245,10,20,Medium Risk,11/05/2019,GroundmountPVArray,Gaborone,2.1,2.1,0.01,0.5,2.1,hour,104

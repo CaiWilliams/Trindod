@@ -149,7 +149,7 @@ def Timestepint(ProjName):
 
 
 def CMRH(year,month):
-    D = calendar.monthrange(year,month)[1] * 12
+    D = calendar.monthrange(year,month)[1] * 24
     return D
 
 def CMR(year, month):
@@ -179,42 +179,17 @@ def SHFetch(IDelta,I,Max,TMY,ProjName):
                     G[i] = G1.append(G2, ignore_index=True).mean()
     return G
 
-def SunHourDevArr(ProjName,CD):
-    year = map(DtY,CD)
-    year = list(year)
-    month = map(DtM,CD)
-    month = list(month)
-    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
-        Inputs = f['Inputs']
-        Timestep = Inputs.attrs['TimStp'].lower()
-        if Timestep == 'month':
-            dev = np.ones(len(CD))
-        elif Timestep == 'hour':
-            D = map(CMRH,year,month)
-            D = list(D)
-            dev = D
-        elif Timestep == 'day':
-            D = map(CMR,year,month)
-            D = list(D)
-            dev = D
-        elif Timestep == 'week':
-            dev = 4
-    return dev
-
-def SunHourDevArr2(IDelta,ID,Max,TMY,ProjName,CD,II):
-    Dates = TMY["time"]
+def SunHourDevArr(IDelta,ID,Max,TMY,ProjName,CD,II):
+    Dates = TMY["time"].copy()
+    PSH = Irr(CD,'PeakSunHours',ProjName)
     for i in range(len(TMY)):
         Dates[i] = TMY["time"][i].month
     TMY["time"] = Dates
-    SH = np.zeros(12)
     I = np.zeros(12)
-    IrrA = II
     for i in range(1,13):
         IrrC = TMY.loc[TMY["time"] == i]
-        IrrB = IrrC["G(i)"].astype('bool')
         IrrC = IrrC["G(i)"]
         I[i-1] = np.sum(IrrC)
-        SH[i-1] = np.sum(IrrB)
     year = map(DtY,CD)
     year = list(year)
     month = map(DtM,CD)
@@ -228,16 +203,50 @@ def SunHourDevArr2(IDelta,ID,Max,TMY,ProjName,CD,II):
             D = np.zeros(len(month))
             for i in range(len(month)):
                 #D[i] = calendar.monthrange(year[i],month[i])[1]
-                D[i] = II[i] * (SH[month[i]-1] /  I[month[i]-1])
-                #print(D[i])
+                D[i] = II[i] * (PSH[i] /  I[month[i]-1])
             D = list(D)
             dev = D
         elif Timestep == 'day':
             D = map(CMR,year,month)
             D = list(D)
-            dev = D
+            dev = PSH[:]/D[:]
         elif Timestep == 'week':
-            dev = 4
+            dev = PSH[:]/4
+    return dev
+
+def SunHourDevArr2(IDelta,ID,Max,TMY,ProjName,CD,II):
+    Dates = TMY["time"].copy()
+    YEL = Irr(CD,'Yeild',ProjName)
+    I = np.zeros(12)
+    for i in range(len(TMY)):
+        Dates[i] = TMY["time"][i].month
+    TMY["time"] = Dates
+    for i in range(1,13):
+        IrrC = TMY.loc[TMY["time"] == i]
+        IrrC = IrrC["G(i)"]
+        I[i-1] = np.sum(IrrC)
+    year = map(DtY,CD)
+    year = list(year)
+    month = map(DtM,CD)
+    month = list(month)
+    with h5py.File(str(ProjName) + ".hdf5", "a") as f:
+        Inputs = f['Inputs']
+        Timestep = Inputs.attrs['TimStp'].lower()
+        if Timestep == 'month':
+            dev = np.ones(len(CD))
+        elif Timestep == 'hour':
+            D = np.zeros(len(month))
+            for i in range(len(month)):
+                #D[i] = calendar.monthrange(year[i],month[i])[1]
+                D[i] = II[i] * (YEL[i] /  I[month[i]-1])
+            D = list(D)
+            dev = D
+        elif Timestep == 'day':
+            D = map(CMR,year,month)
+            D = list(D)
+            dev = YEL[:]/D[:]
+        elif Timestep == 'week':
+            dev = YEL[:]/4
     return dev
 
 #Converts date to datetime object
@@ -454,15 +463,15 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
         YEL = Irr(df[:,0],'Yeild',ProjName)
         EMi = np.array(len(df))
         ID = np.linspace(0,len(df),len(df))
-        SHD = SunHourDevArr(ProjName,df[:,0])
 
         df[:,26] = IrrFetch(IDelta,ID,Max,TMY,ProjName)
-        SHD2 = SunHourDevArr2(IDelta,ID,Max,TMY,ProjName,df[:,0],df[:,26])
+        SHD = SunHourDevArr(IDelta,ID,Max,TMY.copy(),ProjName,df[:,0],df[:,26])
+        SHD2 = SunHourDevArr2(IDelta,ID,Max,TMY.copy(),ProjName,df[:,0],df[:,26])
         EMi = EffceftiveMultiplier(IDelta,ID,Max,TMY,Poly,ProjName)
 
          #/ np.max(IrrFetch(IDelta,ID,Max,TMY,ProjName))
 
-        df[:,5] = PSH[:]/SHD[:]
+        df[:,5] = SHD[:]
         df[:,6] = np.cumsum(df[:,5])
 
         for n in np.where(df[:,4] == True)[0]:
@@ -541,6 +550,7 @@ def ProjectLife(Initial, TimeRes, ProjName, Data):
             TCost[:j,j] = df[:j,23]
             PVGen[:j,j] = df[:j,14]
             D[:j,j] = df[:j,1]
+        print(D)
         #print(TCost)
         PPD = Inputs.attrs['Dcr']*0.01
        #print(TCost[:])
