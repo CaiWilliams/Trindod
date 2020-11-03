@@ -24,12 +24,14 @@ def Worker(Job):
     O.Results()
     return
 
+S = time.time()
 if __name__ == '__main__':
     JB = JobQue('RunQue.csv')
     JB.LoadQue()
     JB.LoadLoc()
     JB.LoadPan()
     JB.LoadTyp()
-    print(JB.Jobs[0])
     with Pool(processes=multiprocessing.cpu_count()-1) as pool:
         pool.map(Worker,JB.Jobs)
+D = S - time.time()
+print(D)
