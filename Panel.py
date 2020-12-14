@@ -6,7 +6,6 @@ import time
 import io
 from datetime import datetime, timedelta
 from dateutil.relativedelta import *
-from matplotlib import pyplot as plt
 
 class Panel:
     def __init__(self,Job,EPC):
@@ -15,8 +14,14 @@ class Panel:
         self.ProjectLength = Job['PrjLif']
         self.ReplacmentDateIndex = 0
         Job['Long-termDegradation'] = Job['Long-termDegradation'] / np.sum(Job['PeakSunHours'])
-        self.a = (1 - Job['Long-termDegradation'] * Job['Burn-inPeakSunHours'] - (1 - Job['Burn-in'])) /np.power(Job['Burn-inPeakSunHours'],2)
-        self.b = (-Job['Long-termDegradation'] - 2 * self.a * Job['Burn-inPeakSunHours'])
+        try:
+            self.a = (1 - Job['Long-termDegradation'] * Job['Burn-inPeakSunHours'] - (1 - Job['Burn-in'])) /np.power(Job['Burn-inPeakSunHours'],2)
+        except:
+            self.a = 0
+        try:
+            self.b = (-Job['Long-termDegradation'] - 2 * self.a * Job['Burn-inPeakSunHours'])
+        except:
+            self.b = 0
         self.m = -Job['Long-termDegradation']
         self.c = (1 - Job['Burn-in']) - self.m * Job['Burn-inPeakSunHours']
         self.BurnIn = Job['Burn-in']
@@ -36,6 +41,7 @@ class Panel:
         self.GR = Job['4']
         self.MG = Job['5']
         self.X = Job['6']
+        self.HoursInEn = 0 
 
     def PVGIS(self,Time):
         self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?'+'lat=' +str(self.Latitude) + '&lon='+str(self.Longitude) + '&angle='+str(self.Tilt)+'&startyear=2015&endyear=2015')

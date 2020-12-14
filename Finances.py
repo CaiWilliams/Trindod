@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from numba import jit
+
 
 class Finance:
 
@@ -78,7 +78,7 @@ class Finance:
         self.Bottom = np.abs(xnpv(self.DCR,PV[:],II[:]))
         self.LCOE =  (self.NewPrice  + np.abs(xnpv(self.DCR,TC[:],II[:])) )/ np.abs(xnpv(self.DCR,PV[:],II[:]))
         return
-@jit  
+ 
 def xnpv(DCR,Values,Date):
     V = np.sum(Values[:] / (1.0 + DCR)**(Date[:]))
     return V

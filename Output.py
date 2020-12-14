@@ -1,5 +1,7 @@
 import pandas as pd
 import pickle
+import numpy as np
+from datetime import datetime, timedelta
 
 class Out:
     def __init__(self,Job,EPC,Time,Panel,Inverter,Finance):
@@ -50,7 +52,7 @@ class Out:
                 ResultsOutput.append(Result)
             elif Result[0] == 'Panel':
                 Result = getattr(self.Panel,Result[1])
-                ResultsOutput.append(Result)
+                ResultsOutput.append(Result[np.nonzero(Result)].mean())
             elif Result[0] == 'Inverter':
                 Result = getattr(self.Inverter,Result[1])[-1]
                 ResultsOutput.append(Result)
@@ -62,5 +64,30 @@ class Out:
                 ResultsOutput.append(Result)
         ResultO = pd.DataFrame([ResultsOutput],columns=ResultsRequested)
         File = File.append(ResultO,ignore_index=True)
-        File.to_csv('Results.csv',index=False)
+        File.to_csv('Results.csv', index=False)
         return
+  
+    def PerformanceRatio(self):
+        Months = [1,2,3,4,5,6,7,8,9,10,11,12]
+        Hours = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+        MonthlyPR = np.zeros(len(Months))
+        HourlyPR = np.zeros((len(Months),len(Hours)))
+        A = np.array(list(map(M,self.Panel.Dates)))
+        B = np.array(list(map(T,self.Panel.Dates)))
+        j = 0 
+        for month in Months:
+            i = 0
+            IM = np.where(A == month)[0]
+            for hour in Hours:
+                IC = np.where((A == month) & (B == hour))[0]
+                HourlyPR[j,i] = np.average(self.Panel.PVGen[IC])
+                i = i + 1
+            j = j + 1
+        np.savetxt(self.Job['PrjLoc']+self.Job['Tech']+".csv", HourlyPR, delimiter=",")
+        return
+
+def M(A):
+    return A.month
+
+def T(A):
+    return A.hour

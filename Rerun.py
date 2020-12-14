@@ -35,15 +35,17 @@ S = time.time()
 if __name__ == '__main__':
     l = multiprocessing.Lock()
     JB = JobQue('RunQue.csv')
-    JB.LoadQue()
-    JB.LoadLoc()
-    JB.LoadPan()
-    JB.LoadTyp()
-    with open('RecentJobs.JBS','wb') as handel:
-        pickle.dump(JB.Jobs,handel,protocol=pickle.HIGHEST_PROTOCOL)
-    with Pool(processes=multiprocessing.cpu_count()-1, initializer=init, initargs=(l,)) as pool:
-        pool.map(Worker,JB.Jobs)
-        pool.close()
-        pool.join()
-        
+    JB.ReRun('RecentJobs.JBS')
+    Devices = [4107,4595]
+    Variations = ['NoEnhancment']
+    for Device in Devices:
+        for Variation in Variations:
+            JB.Modify('Tech',Variation)
+            JB.Modify('PanTyp',Device)
+            JB.LoadPan()
+            with Pool(processes=multiprocessing.cpu_count()-1, initializer=init, initargs=(l,)) as pool:
+                pool.map(Worker,JB.Jobs)
+                pool.close()
+                pool.join()
+
 D = S - time.time()
