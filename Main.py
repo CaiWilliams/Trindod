@@ -3,47 +3,47 @@ from Panel import *
 from EPC import *
 from Finances import *
 from Output import *
-import time
-import cProfile
 from multiprocessing import Pool
 import multiprocessing
 import pickle
 
+# Worker fucnction for multiprocessing
 
 
-def Worker(Job):
-    E = EPC(Job)
-    T = TechTime(Job)
-    P = Panel(Job,E)
-    P.Simulate(T)
-    I = Inverter(Job,T)
-    I.Simulate()
-    F = Finance(Job,E,T,P,I)
-    F.Costs()
-    F.LCOECalculate()
-    O = Out(Job,E,T,P,I,F)
-    lock.acquire()
-    O.Results()
-    lock.release()
+def Worker(job):
+    E = EPC(job)  # Economic costs calculated
+    T = TechTime(job)  # Time & Timesteps calculated
+    P = Panel(job)  # Solar panels setup
+    P.Simulate(T)  # Solar panels simulated
+    I = Inverter(job, T)  # Inverter setup
+    I.Simulate()  # Inverter simulated
+    F = Finance(job, E, T, P, I)  # Finacne model setup
+    F.Costs()  # Finance model runs
+    F.LCOECalculate()  # LCOE Calculated
+    O = Out(job, E, T, P, I, F)  # Output object setup
+    lock.acquire()  # Aquires lock for writing to file
+    O.Results()  # Writes results to file
+    lock.release()  # Releases lock
     return
 
+# Initialise function for multiprocessing worker
+
+
 def init(l):
-    global lock
+    global lock  # lock global variable for multprocessing worker
     lock = l
 
-S = time.time()
+
 if __name__ == '__main__':
     l = multiprocessing.Lock()
-    JB = JobQue('RunQue.csv')
-    JB.LoadQue()
-    JB.LoadLoc()
-    JB.LoadPan()
-    JB.LoadTyp()
-    with open('RecentJobs.JBS','wb') as handel:
-        pickle.dump(JB.Jobs,handel,protocol=pickle.HIGHEST_PROTOCOL)
-    with Pool(processes=multiprocessing.cpu_count()-1, initializer=init, initargs=(l,)) as pool:
-        pool.map(Worker,JB.Jobs)
+    JB = JobQue('RunQue.csv')  # Initialies job que object
+    JB.LoadQue()  # Loads RunQue as job que object
+    JB.LoadLoc()  # Loads locations in job que object
+    JB.LoadPan()  # Loads panel in job que object
+    JB.LoadTyp()  # Load panel type in job que object
+    with open('RecentJobs.JBS', 'wb') as handle:
+        pickle.dump(JB.Jobs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with Pool(processes=multiprocessing.cpu_count() - 1, initializer=init, initargs=(l,)) as pool:
+        pool.map(Worker, JB.Jobs)
         pool.close()
         pool.join()
-        
-D = S - time.time()
