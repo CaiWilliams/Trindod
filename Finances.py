@@ -1,8 +1,10 @@
 import numpy as np
 
 
+# Class for the finanical calculations
 class Finance:
 
+    # Initialise the finance object
     def __init__(self, job, e, t, p, i):
         self.Dates = p.Dates
         self.PVSize = p.PVSize
@@ -21,12 +23,14 @@ class Finance:
         self.NewArea = e.NewArea
         self.PVGen = p.PVGen
 
+    # Calculates the price panel
     def panel_price(self):
         self.PanelPrice = np.zeros(len(self.Dates))
         self.PanelPrice[:] = self.PanelCost
         self.PanelPrice = self.PanelCost + (self.PanelPrice - self.PanelCost) * (1 - self.DCR) / self.InterestDivisor
         return
 
+    # Calculates the replacement cost of the panels and inverter
     def replacement(self):
         plr = np.roll(self.PanelLifetime, -1)
         ilr = np.roll(self.InverterLifetime, -1)
@@ -49,6 +53,7 @@ class Finance:
 
         return
 
+    # Caluculates the reocuring costs of the project
     def recurring_costs(self):
         self.OAM = np.zeros(len(self.Dates))
         self.LandRental = np.zeros(len(self.Dates))
@@ -61,6 +66,7 @@ class Finance:
 
         return
 
+    # Calculates the finances of the project
     def Costs(self):
         self.panel_price()
         self.replacement()
@@ -69,6 +75,7 @@ class Finance:
         self.TotalCosts = self.PaneReplacementCost + self.InverterReplacementCost + self.OAM + self.LandRental
         return
 
+    # Calculates the LCOE at the end of the project
     def LCOECalculate(self):
         i = np.linspace(0, len(self.Dates), len(self.Dates))
         tc = self.TotalCosts[:]
@@ -80,6 +87,7 @@ class Finance:
         return
 
 
+# Calculates the net present value
 def xnpv(dcr, values, date):
     V = np.sum(values[:] / (1.0 + dcr) ** (date[:]))
     return V

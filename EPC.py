@@ -1,7 +1,10 @@
 import math
 
+# Class for the calculation of economic factors
+
 
 class EPC:
+    #  the Initialises the EPC object and calculates all economic factors
     def __init__(self, job):
         self.OriginalCost = job['Design'] + job['Construction'] + job['Framing'] + job['DCcabling'] + job['ACcabling'] + job['CivilWork(Panels)'] + job['CivilWork(general)'] + job['PVPanels'] + job['FixedProjectCosts'] + job['Freight(Panels)'] + job['Freight(other)'] + job['Inverters'] + job['Controls']
         self.PriceExcludingPanels = self.OriginalCost - job['PVPanels']

@@ -8,21 +8,24 @@ from dateutil.relativedelta import *
 
 
 # noinspection PyBroadException
+# Class for the simulation of the panel
 class Panel:
+    # Initialises the panel object
+
     def __init__(self, job):
         self.Lifetime = job['Life'] * 365
         self.FullLifetime = job['Life'] * 365
         self.ProjectLength = job['PrjLif']
         self.ReplacementDateIndex = 0
         job['Long-termDegradation'] = job['Long-termDegradation'] / np.sum(job['PeakSunHours'])
+        # Tries to calculate the degredation coeficient a, if exception occurs a = 0
         try:
-            self.a = (1 - job['Long-termDegradation'] * job['Burn-inPeakSunHours'] -
-                      (1 - job['Burn-in'])) / np.power(job['Burn-inPeakSunHours'], 2)
+            self.a = (1 - job['Long-termDegradation'] * job['Burn-inPeakSunHours'] - (1 - job['Burn-in'])) / np.power(job['Burn-inPeakSunHours'], 2)
         except BaseException:
             self.a = 0
+        # Tries to calculate the degredation coeficient b, if excepion occurs b = 0
         try:
-            self.b = (-job['Long-termDegradation'] - 2 *
-                      self.a * job['Burn-inPeakSunHours'])
+            self.b = (-job['Long-termDegradation'] - 2 * self.a * job['Burn-inPeakSunHours'])
         except BaseException:
             self.b = 0
         self.m = -job['Long-termDegradation']
@@ -46,32 +49,24 @@ class Panel:
         self.X = job['6']
         self.HoursInEn = 0
 
-    # noinspection SpellCheckingInspection
+    # Requests irradiance data from PVGIS
     def PVGIS(self, time):
-        self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' +
-                                      'lat=' +
-                                      str(self.Latitude) +
-                                      '&lon=' +
-                                      str(self.Longitude) +
-                                      '&angle=' +
-                                      str(self.Tilt) +
-                                      '&startyear=2015&endyear=2015')
+        # Requests and reformats PVGIS data
+        self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015')
         self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
-        self.PVGISData = pd.read_csv(
-            self.PVGISData, skipfooter=9, skiprows=[
-                0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=[
-                'time', 'G(i)'])
+        self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
         self.PVGISData = self.PVGISData.to_numpy()
+        # For loop reformats date
         for i in range(len(self.PVGISData)):
-            self.PVGISData[:, 0][i] = datetime.strptime(
-                self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
+            self.PVGISData[:, 0][i] = datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
             self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2019)
-        Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]
-        self.PVGISData = np.roll(self.PVGISData, -Shift * 2)
+        Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
+        self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
         self.Dates = self.PVGISData[:, 0]
         self.Irradiance = self.PVGISData[:, 1]
         return
 
+    # Expands a single years worth of PVGIS Data to length of defined project
     def Expand(self, time):
         self.Dates = time.Dates
         self.Irradiance = np.zeros(len(self.Dates))
@@ -89,8 +84,8 @@ class Panel:
         self.CPSH = np.cumsum(self.PSH)
         return
 
+    # Calculates the Yield and Peak Sun Hours at the defined timestep
     def YieldAndPeakSunHours(self, time):
-
         Yield = np.zeros(len(self.Dates))
         PeakSunHours = np.zeros(len(self.Dates))
         Days = np.zeros(len(self.Dates))
@@ -133,39 +128,46 @@ class Panel:
             self.CPSH = np.cumsum(self.PSH[:])
             return
 
+    # Calculates the degredation of the panel
     def PanelAge(self, time):
-        self.BurnInAbs = (self.a * self.CPSH * self.CPSH) + \
-                         (self.b * self.CPSH + 1)
+        self.BurnInAbs = (self.a * self.CPSH * self.CPSH) + (self.b * self.CPSH + 1)
         self.LongTermDeg = (self.m * self.CPSH) + self.c
         self.LongTermDegAbs = self.LongTermDeg + self.BurnIn
         self.StateOfHealth = self.LongTermDegAbs
 
+        # Checks where SOF > 1 if true  replace with burn-in
         SOFCheck = np.where(self.StateOfHealth > 1)[0]
         self.StateOfHealth[SOFCheck] = self.BurnInAbs[SOFCheck]
 
+        # Checks whether burn-in period has passed
         BurnInTest = self.CPSH > self.BurnInPSH
         BIF = np.where(BurnInTest != True)[0]
+
+        # Calculates the degraded capacity of the farm
         self.Capacity = self.PVSize * (1 - self.BurnIn) * self.StateOfHealth
         self.Capacity[BIF] = self.PVSize * self.StateOfHealth[BIF]
 
+        # Calculates the effective capacity of the array
         self.EffectiveMultiplier()
         self.EffectiveCapacity = self.Capacity * self.EM
+
         PrevEffCap = np.roll(self.EffectiveCapacity, -1)
         self.PVGen[:] = self.Yield[:] * (self.EffectiveCapacity[:] + PrevEffCap[:]) / 2
         I = np.arange(0, len(self.Dates) - self.ReplacementDateIndex, 1, dtype=int)
         self.Lifetime[self.ReplacementDateIndex:] = self.FullLifetime - (time.AdvanceInt * I[:])
+
+        # Ties to find the the index value of the replacment date
         try:
-            self.ReplacementDateIndex = np.where(
-                self.Lifetime < time.AdvanceInt)[0][0]
+            self.ReplacementDateIndex = np.where(self.Lifetime < time.AdvanceInt)[0][0]
         except BaseException:
             return
         return
 
+    # Replaces the panels with new panels
     def PanelReplacement(self):
-        self.CPSH[self.ReplacementDateIndex:] = np.cumsum(
-            self.PSH[self.ReplacementDateIndex:])
-        self.BurnInAbs = (self.a * self.CPSH * self.CPSH) + \
-                         (self.b * self.CPSH + 1)
+
+        self.CPSH[self.ReplacementDateIndex:] = np.cumsum(self.PSH[self.ReplacementDateIndex:])
+        self.BurnInAbs = (self.a * self.CPSH * self.CPSH) + (self.b * self.CPSH + 1)
         self.LongTermDeg = (self.m * self.CPSH) + self.c
         self.LongTermDegAbs = self.LongTermDeg + self.BurnIn
 
@@ -183,6 +185,7 @@ class Panel:
         self.Capacity = self.PVSize * self.StateOfHealth
         return
 
+    # Simulates the life of of the panels
     def Simulate(self, time):
         self.PVGIS(time)
         self.YieldAndPeakSunHours(time)
@@ -193,16 +196,18 @@ class Panel:
             self.PanelAge(time)
         return
 
+    # Calculates the irradaince dependant effective multiplier
     def EffectiveMultiplier(self):
         WhereZero = np.where(self.Irradiance == 0)
         A = np.exp(-self.GR * (self.Irradiance - self.X))
-        self.EM = self.LA + ((self.UA - self.LA) /
-                             (self.C + self.Q * A)) ** (1 / self.MG)
+        self.EM = self.LA + ((self.UA - self.LA) / (self.C + self.Q * A)) ** (1 / self.MG)
         self.EM[WhereZero] = 0
         return
 
 
+# Class for the simulation of the inverter
 class Inverter:
+    # Initialies the inverter object
     def __init__(self, job, time):
         self.FullLifetime = job['InvLif'] * 365
         self.Dates = time.Dates
@@ -210,6 +215,7 @@ class Inverter:
         self.ReplacementDateIndex = 0
         self.Lifetime = np.zeros(len(self.Dates))
 
+    # Simulates the inverters life
     def Simulate(self):
         self.Lifetime[0] = self.FullLifetime
         I = np.arange(0, len(self.Dates) -
@@ -227,7 +233,11 @@ class Inverter:
         return
 
 
+#  Class for time and timesteps
+
 class TechTime:
+    #  Initialises the techtime object
+
     def __init__(self, job):
         self.StartDateString = job['ModSta']
         self.TimeStepString = job['TimStp'].lower()
