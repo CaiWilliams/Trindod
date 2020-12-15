@@ -3,7 +3,6 @@ from Panel import *
 from EPC import *
 from Finances import *
 from Output import *
-import time
 from multiprocessing import Pool
 import multiprocessing
 
@@ -30,7 +29,6 @@ def init(l):
     lock = l
 
 
-S = time.time()
 if __name__ == '__main__':
     l = multiprocessing.Lock()
     JB = JobQue('RunQue.csv')
@@ -47,4 +45,3 @@ if __name__ == '__main__':
                 pool.close()
                 pool.join()
 
-D = S - time.time()
