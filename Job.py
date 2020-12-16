@@ -50,18 +50,13 @@ class JobQue:
                 self.Jobs[i]['Longitude'] = lon
                 self.Jobs[i]['IRR'] = 7.5
                 tf = TimezoneFinder()
-                TZ = pytz.timezone(
-                    tf.timezone_at(
-                        lat=float(lat),
-                        lng=float(lon)))
+                TZ = pytz.timezone(tf.timezone_at(lat=float(lat), lng=float(lon)))
                 date = datetime.datetime(2019, 12, 21, hour=15, tzinfo=TZ)
                 elevation = get_altitude(float(lat), float(lon), date)
                 Width = 1.968
                 HeightDifference = np.sin(np.radians(Tilt)) * Width
-                ModuleRowSpacing = HeightDifference / \
-                    np.tan((np.radians(elevation)))
-                RowWidth = ModuleRowSpacing + \
-                    (np.cos((np.radians(Tilt))) * Width)
+                ModuleRowSpacing = HeightDifference / np.tan((np.radians(elevation)))
+                RowWidth = ModuleRowSpacing + (np.cos((np.radians(Tilt))) * Width)
                 self.Jobs[i]['Elevation'] = elevation
                 self.Jobs[i]['Spacing'] = RowWidth
 
@@ -107,14 +102,7 @@ class JobQue:
                 Tilt = str(np.abs(int(lat) - 23))
             else:
                 Tilt = str(np.abs(int(lat) + 23))
-            YieldAPSHR = requests.get(
-                "https://re.jrc.ec.europa.eu/api/PVcalc?lat=" +
-                lat +
-                "&lon=" +
-                lon +
-                "&peakpower=1&loss=14&aspect=0&angle=" +
-                Tilt +
-                "&pvtechchoice=Unknown&outputformat=csv")
+            YieldAPSHR = requests.get("https://re.jrc.ec.europa.eu/api/PVcalc?lat=" + lat + "&lon=" + lon + "&peakpower=1&loss=14&aspect=0&angle=" + Tilt + "&pvtechchoice=Unknown&outputformat=csv")
             YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
             YieldAPSHV = YieldAPSH.getvalue()
             if "message" in YieldAPSHV:
@@ -132,7 +120,7 @@ class JobQue:
                 YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
                 YieldAPSH = pd.read_csv(
                     YieldAPSH, error_bad_lines=False, skipfooter=12, skiprows=[
-                        0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t')
+                        0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t', engine='python')
 
         return lat, lon, YieldAPSH, int(Tilt)
 
