@@ -4,7 +4,10 @@ import pandas as pd
 import requests
 import io
 from datetime import datetime
+import time as TTime
 from dateutil.relativedelta import *
+from scipy.interpolate import interp1d
+
 
 
 # noinspection PyBroadException
@@ -47,23 +50,31 @@ class Panel:
         self.GR = job['4']
         self.MG = job['5']
         self.X = job['6']
+        try:
+            self.ET = job['7']
+        except:
+            self.ET = 'R'
         self.HoursInEn = 0
 
     # Requests irradiance data from PVGIS
     def PVGIS(self, time):
         # Requests and reformats PVGIS data
-        self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015')
-        self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
-        self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
-        self.PVGISData = self.PVGISData.to_numpy()
-        # For loop reformats date
-        for i in range(len(self.PVGISData)):
-            self.PVGISData[:, 0][i] = datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
-            self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2019)
-        Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
-        self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
-        self.Dates = self.PVGISData[:, 0]
-        self.Irradiance = self.PVGISData[:, 1]
+        try:
+            self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015')
+            self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
+            self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
+            self.PVGISData = self.PVGISData.to_numpy()
+            # For loop reformats date
+            for i in range(len(self.PVGISData)):
+                self.PVGISData[:, 0][i] = datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
+                self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2019)
+            Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
+            self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
+            self.Dates = self.PVGISData[:, 0]
+            self.Irradiance = self.PVGISData[:, 1]
+        except:
+            TTime.sleep(2)
+            self.PVGIS(time)
         return
 
     # Expands a single years worth of PVGIS Data to length of defined project
@@ -99,7 +110,6 @@ class Panel:
             Days[i] = calendar.monthrange(Date.year, Date.month)[1]
             Month[i] = np.int(Date.month)
             i = i + 1
-
         if time.TimeStepString == 'month':
             self.Yield = Yield
             self.PSH = PeakSunHours
@@ -199,8 +209,15 @@ class Panel:
     # Calculates the irradaince dependant effective multiplier
     def EffectiveMultiplier(self):
         WhereZero = np.where(self.Irradiance == 0)
-        A = np.exp(-self.GR * (self.Irradiance - self.X))
-        self.EM = self.LA + ((self.UA - self.LA) / (self.C + self.Q * A)) ** (1 / self.MG)
+        if self.ET == 'P':
+            self.EM = np.power(self.Irradiance * self.LA, 3) - np.power(self.Irradiance * self.UA, 2) + (self.Irradiance * self.C) + self.Q
+        elif self.ET == 'Raw':
+            Device = pd.read_csv(str(self.LA))
+            f = interp1d(Device['Irradiance'], Device['Enhanced'], fill_value="extrapolate")
+            self.EM = f(self.Irradiance)
+        else:
+            A = np.exp(-self.GR * (self.Irradiance - self.X))
+            self.EM = self.LA + ((self.UA - self.LA) / (self.C + self.Q * A)) ** (1 / self.MG)
         self.EM[WhereZero] = 0
         return
 

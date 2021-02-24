@@ -19,6 +19,12 @@ class Que:
             key = list(paramsDict.keys())
             value = list(paramsDict.values())
             for idx, val in enumerate(value):
+                for element in value[idx]:
+                    if type(element) == str:
+                        if "#" in element:
+                            element = element.split('#')
+                            if "X" in element[0]:
+                                value[idx] = [value[idx][0]] * int(element[1])
                 setattr(self, key[idx], value[idx])
 
     def Declare(self, **kwargs):
@@ -39,16 +45,18 @@ class Que:
 
     def SaveQue(self):
         self.filename = self.filename.split('.')[0]
+        print(self.filename)
         JB = JobQue(self.filename + ".csv")  # Initialies job que object
         JB.LoadQue()  # Loads RunQue as job que object
         JB.LoadLoc()  # Loads locations in job que object
         JB.LoadPan()  # Loads panel in job que object
         JB.LoadTyp()  # Load panel type in job que object
+        print(JB.Jobs)
         with open(self.filename + '.JBS', 'wb') as handle:
             pickle.dump(JB.Jobs, handle, protocol=pickle.HIGHEST_PROTOCOL)
         return
 
 
-Q = Que("Params.json")
+Q = Que("Revised.json")
 Q.GenFile()
 Q.SaveQue()

@@ -66,4 +66,4 @@ class Process:
                         pool.join()
         return
 
-Process.Run('Params',PrjLoc=['Stockholm','Warsaw'],PanTyp=4594)
+Process.Run('Params')

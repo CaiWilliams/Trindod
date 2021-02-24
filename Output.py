@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import json
 
 
 # Class for outputing the results of the model
@@ -65,7 +66,7 @@ class Out:
         df['Land Rental'] = pd.Series(self.Finance.LandRental, index=df.index)
         df['Total Cost'] = pd.Series(self.Finance.TotalCosts, index=df.index)
         df['LCOE'] = pd.Series(self.Finance.LCOE, index=df.index)
-        df.to_excel(str(self.Job['ProjectName']) + ".xlsx")
+        df.to_csv(str(self.Job['PrjLoc']) + "4872RSi.csv")
         return
 
     # Outputs the results specified at the first line of Results.csv file
@@ -75,13 +76,12 @@ class Out:
         ResultsOutput = list()
         for Result in ResultsRequested:
             Result = Result.split('.')
-
             if Result[0] == 'Finance':
                 Result = getattr(self.Finance, Result[1])
                 ResultsOutput.append(Result)
             elif Result[0] == 'Panel':
                 Result = getattr(self.Panel, Result[1])
-                ResultsOutput.append(Result[np.nonzero(Result)].mean())
+                ResultsOutput.append(np.average(Result[np.nonzero(Result)]))
             elif Result[0] == 'Inverter':
                 Result = getattr(self.Inverter, Result[1])[-1]
                 ResultsOutput.append(Result)

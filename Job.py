@@ -18,6 +18,7 @@ class JobQue:
         self.Panels = r'Data\Panel'
         self.PanelData = r'Data\PanelData.csv'
         self.Types = r'Data\Type'
+        self.num = 0
         return
 
     def ReRun(self, of):
@@ -50,7 +51,7 @@ class JobQue:
                 self.Jobs[i]['Longitude'] = lon
                 self.Jobs[i]['IRR'] = 7.5
                 tf = TimezoneFinder()
-                TZ = pytz.timezone(tf.timezone_at(lat=float(lat), lng=float(lon)))
+                TZ = pytz.timezone(tf.closest_timezone_at(lat=float(lat), lng=float(lon), delta_degree=10))
                 date = datetime.datetime(2019, 12, 21, hour=15, tzinfo=TZ)
                 elevation = get_altitude(float(lat), float(lon), date)
                 Width = 1.968
@@ -121,7 +122,8 @@ class JobQue:
                 YieldAPSH = pd.read_csv(
                     YieldAPSH, error_bad_lines=False, skipfooter=12, skiprows=[
                         0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t', engine='python')
-
+                self.num = self.num + Pass
+            print(self.num)
         return lat, lon, YieldAPSH, int(Tilt)
 
     def RandomLocGen(self):
