@@ -10,6 +10,8 @@ from scipy.interpolate import interp1d
 
 
 
+
+
 # noinspection PyBroadException
 # Class for the simulation of the panel
 class Panel:
@@ -24,7 +26,7 @@ class Panel:
         # Tries to calculate the degredation coeficient a, if exception occurs a = 0
         try:
             self.a = (1 - job['Long-termDegradation'] * job['Burn-inPeakSunHours'] - (1 - job['Burn-in'])) / np.power(job['Burn-inPeakSunHours'], 2)
-        except BaseException:
+        except:
             self.a = 0
         # Tries to calculate the degredation coeficient b, if excepion occurs b = 0
         try:
@@ -86,12 +88,13 @@ class Panel:
         self.Lifetime[0] = self.FullLifetime
         Yield = self.Yield
         PSH = self.PSH
-        self.Yield = np.zeros(len(self.Dates))
-        self.PSH = np.zeros(len(self.Dates))
-        for i in range(len(self.Dates)):
-            self.Irradiance[i] = self.PVGISData[:, 1][i % len(self.PVGISData)]
-            self.Yield[i] = Yield[i % len(self.PVGISData)]
-            self.PSH[i] = PSH[i % len(self.PVGISData)]
+        if time.TimeStepString == 'hour':
+            self.Yield = np.zeros(len(self.Dates))
+            self.PSH = np.zeros(len(self.Dates))
+            for i in range(len(self.Dates)):
+                self.Irradiance[i] = self.PVGISData[:, 1][i % len(self.PVGISData)]
+                self.Yield[i] = Yield[i % len(self.PVGISData)]
+                self.PSH[i] = PSH[i % len(self.PVGISData)]
         self.CPSH = np.cumsum(self.PSH)
         return
 
@@ -141,9 +144,16 @@ class Panel:
     # Calculates the degredation of the panel
     def PanelAge(self, time):
         self.BurnInAbs = (self.a * self.CPSH * self.CPSH) + (self.b * self.CPSH + 1)
+        #BIACheck = np.where(self.BurnInAbs < 0 )[0]
+        #self.BurnInAbs[BIACheck] = 0
+
         self.LongTermDeg = (self.m * self.CPSH) + self.c
+        LTDCheck = np.where(self.LongTermDeg < 0)[0]
+        self.LongTermDeg[LTDCheck] = 0
+
         self.LongTermDegAbs = self.LongTermDeg + self.BurnIn
         self.StateOfHealth = self.LongTermDegAbs
+
 
         # Checks where SOF > 1 if true  replace with burn-in
         SOFCheck = np.where(self.StateOfHealth > 1)[0]
@@ -153,13 +163,22 @@ class Panel:
         BurnInTest = self.CPSH > self.BurnInPSH
         BIF = np.where(BurnInTest != True)[0]
 
+        SOFCheck2 = np.where(self.StateOfHealth < 0)[0]
+        self.StateOfHealth[SOFCheck2] = 0
+
         # Calculates the degraded capacity of the farm
         self.Capacity = self.PVSize * (1 - self.BurnIn) * self.StateOfHealth
         self.Capacity[BIF] = self.PVSize * self.StateOfHealth[BIF]
 
+        CCheck = np.where(self.Capacity < 0)[0]
+        self.Capacity[CCheck] = 0
+
         # Calculates the effective capacity of the array
-        self.EffectiveMultiplier()
-        self.EffectiveCapacity = self.Capacity * self.EM
+        if time.TimeStepString == 'hour':
+            self.EffectiveMultiplier()
+            self.EffectiveCapacity = self.Capacity * self.EM
+        elif time.TimeStepString == 'month':
+            self.EffectiveCapacity = self.Capacity
 
         PrevEffCap = np.roll(self.EffectiveCapacity, -1)
         self.PVGen[:] = self.Yield[:] * (self.EffectiveCapacity[:] + PrevEffCap[:]) / 2
@@ -197,7 +216,10 @@ class Panel:
 
     # Simulates the life of of the panels
     def Simulate(self, time):
-        self.PVGIS(time)
+        if time.TimeStepString == 'hour':
+            self.PVGIS(time)
+        else:
+            self.Dates = time.Dates
         self.YieldAndPeakSunHours(time)
         self.Expand(time)
         self.PanelAge(time)

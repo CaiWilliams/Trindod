@@ -82,8 +82,8 @@ class Finance:
         pv = self.PVGen[:]
         ii = i[:] / self.InterestDivisor
         self.Top = (self.NewPrice + np.abs(xnpv(self.DCR, tc[:], ii[:])))
-        self.Bottom = np.abs(xnpv(self.DCR, pv[:], ii[:]))
-        self.LCOE = (self.NewPrice + np.abs(xnpv(self.DCR, tc[:], ii[:]))) / np.abs(xnpv(self.DCR, pv[:], ii[:]))
+        self.Bottom = xnpv(self.DCR, pv[:], ii[:])
+        self.LCOE = (self.NewPrice + np.abs(xnpv(self.DCR, tc[:], ii[:]))) / xnpv(self.DCR, pv[:], ii[:])
         return
 
 

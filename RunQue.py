@@ -25,6 +25,10 @@ class Que:
                             element = element.split('#')
                             if "X" in element[0]:
                                 value[idx] = [value[idx][0]] * int(element[1])
+                            if "CA" in element[0]:
+                                #print(np.linspace(value[idx][0], value[idx][0] + int(element[1]), int(element[1])))
+                                #print(np.arange(value[idx][0],value[idx][0] + int(element[1]),1,dtype='int'))
+                                value[idx] = np.arange(value[idx][0],value[idx][0] + int(element[1]),1,dtype='int')
                 setattr(self, key[idx], value[idx])
 
     def Declare(self, **kwargs):
@@ -45,18 +49,16 @@ class Que:
 
     def SaveQue(self):
         self.filename = self.filename.split('.')[0]
-        print(self.filename)
         JB = JobQue(self.filename + ".csv")  # Initialies job que object
         JB.LoadQue()  # Loads RunQue as job que object
         JB.LoadLoc()  # Loads locations in job que object
         JB.LoadPan()  # Loads panel in job que object
         JB.LoadTyp()  # Load panel type in job que object
-        print(JB.Jobs)
         with open(self.filename + '.JBS', 'wb') as handle:
             pickle.dump(JB.Jobs, handle, protocol=pickle.HIGHEST_PROTOCOL)
         return
 
 
-Q = Que("Revised.json")
+Q = Que("GAMonthlyPortElizabeth.json")
 Q.GenFile()
 Q.SaveQue()

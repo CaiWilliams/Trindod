@@ -73,7 +73,9 @@ class JobQue:
         self.Pan = list()
         self.EM = list()
         for i in range(len(self.Jobs)):
-            self.Pan.append(P.iloc[self.Jobs[i]['PanTyp']].to_dict())
+            #print(P.iloc[self.Jobs[i]['PanTyp']].to_dict())
+            #print(P[P['PanelID'] == self.Jobs[i]['PanTyp']].T.to_dict()[i])
+            self.Pan.append(P[P['PanelID'] == self.Jobs[i]['PanTyp']].T.to_dict()[i])
             self.Jobs[i].update(self.Pan[i])
         i = 0
         for Job in self.Jobs:
@@ -123,7 +125,6 @@ class JobQue:
                     YieldAPSH, error_bad_lines=False, skipfooter=12, skiprows=[
                         0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t', engine='python')
                 self.num = self.num + Pass
-            print(self.num)
         return lat, lon, YieldAPSH, int(Tilt)
 
     def RandomLocGen(self):
