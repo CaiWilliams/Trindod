@@ -157,7 +157,6 @@ class Que:
         self.PrjLoc = "Random"
         self.PrjTyp = "GroundmountPVArray"
         self.ModSta = "01/05/2019"
-        self.Irr = "Medium Risk"
         self.PrjLif = 20
         self.InvLif = 10
         self.PanFlrPri = 0.245
@@ -188,8 +187,8 @@ class Que:
         return
 
     def GenFile(self):
-        params = [self.ProjectName, self.PanTyp, self.PanCosInf, self.PanFlrPri, self.InvLif, self.PrjLif, self.Irr, self.ModSta, self.PrjTyp, self.PrjLoc, self.OprCosInf, self.InvCosInf, self.OprCos, self.RenCos, self.RenInf, self.TimStp, self.Tech]
-        paramNames = ['ProjectName', 'PanTyp', 'PanCosInf', 'PanFlrPri', 'InvLif', 'PrjLif', 'Irr', 'ModSta', 'PrjTyp', 'PrjLoc', 'OprCosInf', 'InvCosInf', 'OprCos', 'RenCos', 'RenInf', 'TimStp', 'Tech']
+        params = [self.ProjectName, self.PanTyp, self.PanCosInf, self.PanFlrPri, self.InvLif, self.PrjLif, self.ModSta, self.PrjTyp, self.PrjLoc, self.OprCosInf, self.InvCosInf, self.OprCos, self.RenCos, self.RenInf, self.TimStp, self.Tech]
+        paramNames = ['ProjectName', 'PanTyp', 'PanCosInf', 'PanFlrPri', 'InvLif', 'PrjLif', 'ModSta', 'PrjTyp', 'PrjLoc', 'OprCosInf', 'InvCosInf', 'OprCos', 'RenCos', 'RenInf', 'TimStp', 'Tech']
         Jobs = list(itertools.product(*params))
         Jobs = np.vstack(Jobs)
         Jobs = pd.DataFrame(data=Jobs, index=None, columns=paramNames)
