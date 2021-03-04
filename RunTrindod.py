@@ -26,8 +26,7 @@ class LCOERun:
         GAJB = GeneticAlgorithumJob(tq, population, genes, mutationrate, target, maxiter)
         GAJB = GAJB.Load_Population(self.paneldatafile)
         GAR = GeneticAlgorithum(GAJB, GApaneldatafile)
-        while GAR.Generation < GAR.MaxIter:
-            GAR.Itterate()
+        GAR.Itterate()
         filename = time.strftime('%Y%m%d-%H%M%S')
         GAR.NamedPopulation.to_csv('Generations\\' + filename + '.csv')
         return
@@ -36,14 +35,14 @@ class LCOERun:
         GAJB = GeneticAlgorithumJob(tq, population, genes, mutationrate, target, maxiter)
         GAJB = GAJB.Random_Popultaion(lowlimits, highlimits)
         GAR = GeneticAlgorithum(GAJB, GApaneldatafile)
-        while GAR.Generation < GAR.MaxIter:
-            GAR.Itterate()
+        GAR.Itterate()
         filename = time.strftime('%Y%m%d-%H%M%S')
         GAR.NamedPopulation.to_csv('Generations\\' + filename + '.csv')
         return
 
 if __name__ == '__main__':
-    A = LCOERun('GAMonthlyPortElizabeth', 'Data/PanelDataNonGA.csv')
-    A.Run()
-    #A.GA_Load_Population('Data/PanelData.csv','GAMonthlyPortElizabeth', 500, 5, 0.01, 0, 10)
-    #A.GA_Random_Population('Data/PanelData2.csv', 'GAMonthlyPortElizabeth', 500, 5, [0,0,0,0,0], [100,100,100,100,100], 0.01, 0, 10)
+    A = LCOERun('ResultSets/GA/PortElizabeth/GAMonthlyPortElizabeth', 'Data/PanelDataNonGA.csv')
+    #A.Run()
+    #A.ReRun()
+    A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/PortElizabeth/GAMonthlyPortElizabeth', 500, 4, 0.05, 0, 100)
+    #A.GA_Random_Population('Data/PanelData.csv', 'ResultSets/GA/PortElizabeth/GAMonthlyPortElizabeth', 500, 5, [0,0,0,0,0], [100,100,100,100,100], 0.01, 0, 10)
