@@ -1,17 +1,24 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+import os
 
 class Results:
     def __init__(self, results, **paramaters):
         self.Categories = paramaters
         self.Categories.update(Results='Results', Fitness='Fitness')
         self.Results = pd.read_csv(results)
+        self.Results = self.Results.replace([np.inf, -np.inf], np.nan)
+        self.Results = self.Results.dropna()
+        self.Results['Generation'] = self.Results['Generation'].str[1:]
 
     def PlotOne(self, cat_name, xname, yname):
-        YAverage = self.Results.groupby(['Generation']).mean()[cat_name].to_numpy()
-        YMin = self.Results.groupby(['Generation']).min()[cat_name].to_numpy()
-        YMax = self.Results.groupby(['Generation']).max()[cat_name].to_numpy()
+
+        YAverage = self.Results.groupby(['Generation']).mean()[cat_name].sort_values(ascending=False).to_numpy()
+        YMin = self.Results.groupby(['Generation']).min()[cat_name].sort_values(ascending=False).to_numpy()
+        YMax = self.Results.groupby(['Generation']).max()[cat_name].sort_values(ascending=False).to_numpy()
         X = pd.unique(self.Results['Generation'])
+        X = range(len(X))
         plt.plot(X, YAverage)
         plt.fill_between(X, YMin, YMax, color='b', alpha=.1)
         plt.xlabel(xname)
@@ -74,6 +81,23 @@ class Results:
         plt.show()
         return
 
+def directory(Dir):
+    Devices = os.listdir(Dir)
+    for Device in Devices:
+        Results = pd.read_csv(Dir + '\\' + Device)
+        Results = Results.replace([np.inf, -np.inf], np.nan)
+        Results = Results.dropna()
+        Results['Generation'] = Results['Generation'].str[1:]
+        X = range(len(pd.unique(Results['Generation'])))
+        Y = Results.groupby(['Generation']).mean()['Results'].sort_values(ascending=False).to_numpy()
+        #YMin = Results.groupby(['Generation']).min()['Results'].sort_values(ascending=False).to_numpy()
+        #YMax = Results.groupby(['Generation']).max()['Results'].sort_values(ascending=False).to_numpy()
+        plt.plot(X, Y, label=Device)
+        #plt.fill_between(X, YMin, YMax, color='b', alpha=.1)
+        plt.legend()
+    plt.show()
+    return
 
-R = Results('Generations/20210304-141726.csv')
-R.PlotAll()
+directory('Generations')
+#R = Results('Generations/20210305-031541.csv')
+#R.PlotOne('Results','Generations','LCOE')

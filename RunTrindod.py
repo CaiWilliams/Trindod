@@ -41,8 +41,13 @@ class LCOERun:
         return
 
 if __name__ == '__main__':
-    A = LCOERun('ResultSets/GA/Uk/GAMonthlyUk', 'Data/PanelDataNonGA.csv')
-    A.Run()
+   #A = LCOERun('ResultSets/GA/Uk/GAMonthlyUk', 'Data/PanelDataNonGA.csv')
+    #A.Run()
     #A.ReRun()
-    #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, 0.2, 0, 100)
-    #A.GA_Random_Population('Data/PanelData.csv', 'ResultSets/GA/PortElizabeth/GAMonthlyPortElizabeth', 500, 5, [0,0,0,0,0], [100,100,100,100,100], 0.01, 0, 10)
+    #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, 0.05, 0, 200)
+    Test = [0.5]
+    for j in Test:
+        print(j)
+        A = LCOERun('ResultSets/GA/Uk/GAMonthlyUk', 'Data/PanelDataNonGA.csv')
+        A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, j, 0, 3)
+        #A.GA_Random_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, [0,0,0,0], [100,100,100,100], j, 0, 50)
