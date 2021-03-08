@@ -117,6 +117,7 @@ class GeneticAlgorithum:
     def Itterate(self):
         self.T.LoadJBS()
         while self.Generation < self.MaxIter:
+            print(self.Generation)
             self.Save_PanelData()
             self.T.LoadJBS()
             self.T.Run()

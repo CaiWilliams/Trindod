@@ -14,5 +14,8 @@
   "RenCos": [0.5],
   "RenInf": [2.1],
   "TimStp": ["month"],
-  "Tech": ["NoEnhancment"]
+  "Tech": ["NoEnhancment"],
+  "ProjectYield": [3.145],
+  "Latitude": [0],
+  "6": [4]
 }

@@ -74,6 +74,9 @@ class JobQue:
             else:
                 with open((self.Locations + "\\" + str(Job['PrjLoc']) + extn)) as f:
                     self.Loc.append(json.load(f))
+                X = list(set(self.Loc[i].keys()).intersection(self.Jobs[i].keys()))
+                for dk in X:
+                    del self.Loc[i][dk]
                 self.Jobs[i].update(self.Loc[i])
             i = i + 1
         return
@@ -91,6 +94,9 @@ class JobQue:
         for Job in self.Jobs:
             f = self.Panels + "\\" + str(Job['Tech']) + ".csv"
             self.EM.append(pd.read_csv(f).to_dict(orient='records'))
+            X = list(set(self.EM[i][0].keys()).intersection(self.Jobs[i].keys()))
+            for dk in X:
+                del self.EM[i][0][dk]
             self.Jobs[i].update(self.EM[i][0])
             i = i + 1
         return
@@ -102,6 +108,9 @@ class JobQue:
         for Job in self.Jobs:
             f = self.Types + "\\" + Job['PrjTyp'] + extn
             self.Typ.append(pd.read_csv(f).to_dict(orient='records'))
+            X = list(set(self.Typ[i][0].keys()).intersection(self.Jobs[i].keys()))
+            for dk in X:
+                del self.Typ[i][0][dk]
             self.Jobs[i].update(self.Typ[i][0])
             i = i + 1
         return
@@ -178,7 +187,8 @@ class Que:
                                 value[idx] = [value[idx][0]] * int(element[1])
                             if "CA" in element[0]:
                                 value[idx] = np.arange(value[idx][0], value[idx][0] + int(element[1]), 1, dtype='int')
-                setattr(self, key[idx], value[idx])
+        self.key = key
+        self.value = value
 
     def Declare(self, **kwargs):
         keys, values = kwargs.items()
@@ -187,11 +197,9 @@ class Que:
         return
 
     def GenFile(self):
-        params = [self.ProjectName, self.PanTyp, self.PanCosInf, self.PanFlrPri, self.InvLif, self.PrjLif, self.ModSta, self.PrjTyp, self.PrjLoc, self.OprCosInf, self.InvCosInf, self.OprCos, self.RenCos, self.RenInf, self.TimStp, self.Tech]
-        paramNames = ['ProjectName', 'PanTyp', 'PanCosInf', 'PanFlrPri', 'InvLif', 'PrjLif', 'ModSta', 'PrjTyp', 'PrjLoc', 'OprCosInf', 'InvCosInf', 'OprCos', 'RenCos', 'RenInf', 'TimStp', 'Tech']
-        Jobs = list(itertools.product(*params))
+        Jobs = list(itertools.product(*self.value))
         Jobs = np.vstack(Jobs)
-        Jobs = pd.DataFrame(data=Jobs, index=None, columns=paramNames)
+        Jobs = pd.DataFrame(data=Jobs, index=None, columns=self.key)
         Jobs.to_csv(self.filename + ".csv", index=False)
         return
 
@@ -785,3 +793,7 @@ class LCOE:
         self.Results = self.Results['Finance.LCOE'].to_numpy()
         self.EmptyResults.to_csv(self.ResultsLoc, index=False)
         return self.Results
+
+    def EmptyResults(self):
+        self.EmptyResults.to_csv(self.ResultsLoc, index=False)
+        return
