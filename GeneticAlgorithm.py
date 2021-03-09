@@ -119,7 +119,7 @@ class GeneticAlgorithum:
         while self.Generation < self.MaxIter:
             print(self.Generation)
             self.Save_PanelData()
-            self.T.LoadJBS()
+            self.T.Q.LoadPan2()
             self.T.Run()
             self.Results = self.T.FetchReults()
             self.Test_Population()

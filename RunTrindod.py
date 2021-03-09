@@ -42,9 +42,9 @@ class LCOERun:
 
 if __name__ == '__main__':
     A = LCOERun('ResultSets/GA/Uk/GAMonthlyUk', 'Data/PanelDataNonGA.csv')
-    A.Run()
+    #A.Run()
     #A.ReRun()
-    #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, 0.05, 0, 200)
+    A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, 0.05, 0, 5)
     #Test = [0.5]
     #for j in Test:
     #    print(j)

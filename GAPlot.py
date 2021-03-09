@@ -99,6 +99,6 @@ def directory(Dir):
     return
 
 #directory('Generations')
-R = Results('Generations/20210305-134701.csv')
-R.PlotAll()
-#R.PlotOne('Results','Generations','LCOE')
+R = Results('Generations/20210309-130520.csv')
+#R.PlotAll()
+R.PlotOne('Results','Generations','LCOE')
