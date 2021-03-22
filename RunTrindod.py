@@ -40,11 +40,22 @@ class LCOERun:
         GAR.NamedPopulation.to_csv('Generations\\' + filename + '.csv')
         return
 
+    def GA_Real_Population(self, GApaneldatafile, TrindodQue, NP, PB, PC, PM, target,maxiter):
+        GAJB = GeneticAlgorithumJob(TrindodQue,NP,target,maxiter)
+        GAJB = GAJB.Popultation_Mix(PB,PC,PM)
+        GAJB = GAJB.Load_Population_New(self.paneldatafile)
+        GAR = GeneticAlgorithum(GAJB, GApaneldatafile)
+        GAR.Itterate_New()
+        filename = time.strftime('%Y%m%d-%H%M%S')
+        GAR.NamedPopulation.to_csv('Generations\\' + filename + '.csv')
+        return
+
 if __name__ == '__main__':
-    A = LCOERun('ResultSets/GA/Uk/GAMonthlyUk', 'Data/PanelDataNonGA.csv')
+    A = LCOERun('ResultSets/InitialPop/Initialpopulation', 'Data/Initialpopulation.csv')
     #A.Run()
     #A.ReRun()
-    A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, 0.05, 0, 5)
+    #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/InitialPop/Initialpopulation', 500, 4, 0.05, 0, 5)
+    A.GA_Real_Population('Data/PanelData.csv','ResultSets/InitialPop/Initialpopulation',37,10,14,13,0,10)
     #Test = [0.5]
     #for j in Test:
     #    print(j)
