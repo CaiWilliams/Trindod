@@ -1,0 +1,18 @@
+{
+  "ProjectName":["0"],
+  "PanTyp": [1,"CA#36"],
+  "PanCosInf": [-1],
+  "PanFlrPri": [0.245],
+  "InvLif": [10],
+  "PrjLif": [20],
+  "ModSta": ["01/05/2019"],
+  "PrjTyp": ["GroundmountPVArray"],
+  "PrjLoc": ["ukavg"],
+  "OprCosInf": [1.7],
+  "InvCosInf": [1.7],
+  "OprCos": [0.01],
+  "RenCos": [0.5],
+  "RenInf": [1.7],
+  "TimStp": ["month"],
+  "Tech": ["NoEnhancment"]
+}

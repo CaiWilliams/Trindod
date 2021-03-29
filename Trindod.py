@@ -92,7 +92,6 @@ class JobQue:
             X = list(set(self.Pan.keys()).intersection(self.Jobs[i].keys()))
             for dk in X:
                 del self.Pan[dk]
-            print(X)
             self.Jobs[i].update(self.Pan)
         i = 0
         for Job in self.Jobs:

@@ -15,6 +15,7 @@ class GeneticAlgorithum:
         self.MaxIter = job.MaxIter
         self.Children = job.Children
         self.Generation = 0
+        self.BestCarryOver = job.CarryOver
         self.T = LCOE(self.TrindodQue, self.paneldata)
     
     def Save_Popultaion_To_Obj(self):
@@ -72,25 +73,28 @@ class GeneticAlgorithum:
         PanelData['Burn-in'] = self.Population[:, 1]
         PanelData['Long-termDegradation'] = self.Population[:, 2]
         PanelData['Burn-inPeakSunHours'] = 500
-        PanelData['Cost'] = 0.245
-        PanelData['PowerDensity'] = self.Population[:, 3]
-        PanelData['EnergyEfficiency'] = self.Population[:, 3] / 9.8 / 100
+        PanelData['Cost'] = self.Population[:, 3]
+        PanelData['PowerDensity'] = self.Population[:, 4]
+        PanelData['EnergyEfficiency'] = self.Population[:, 4] / 9.8 / 100
         PanelData.to_csv(self.paneldata, index=False)
         return
     
     def Breed_Population(self):
-        self.Mothers = np.random.choice(range(len(self.Population)), int(len(self.Population)), p=self.Fitness)
-        self.Fathers = np.random.choice(range(len(self.Population)), int(len(self.Population)), p=self.Fitness)
-
+        self.Mothers = np.random.choice(range(len(self.Population)), int(len(self.Population))-self.BestCarryOver, p=self.Fitness)
+        self.Fathers = np.random.choice(range(len(self.Population)), int(len(self.Population))-self.BestCarryOver, p=self.Fitness)
+        self.Top = np.argpartition(self.Fitness, -self.BestCarryOver)[-self.BestCarryOver:]
         NP = np.zeros(np.shape(self.Population))
+        NP[-self.BestCarryOver:] = self.Population[self.Top]
         i = 0
-        CrosoverPoints = np.random.randint(0, self.Genes+1, len(self.Population))
+        CrosoverPoints = np.random.randint(0, self.Genes+1, len(self.Population)-self.BestCarryOver)
         for NPp, P1, P2, CrosoverPoint in zip(NP, self.Mothers, self.Fathers, CrosoverPoints):
             NPp[:CrosoverPoint] = self.Population[P1, :CrosoverPoint]
             NPp[CrosoverPoint:] = self.Population[P2, CrosoverPoint:]
             NP[i] = NPp
             i = i + 1
         self.Population = NP
+        self.Mothers = np.append(self.Mothers, self.Top)
+        self.Fathers = np.append(self.Fathers, self.Top)
         return
     
     def Mutate_Population(self):
@@ -133,11 +137,12 @@ class GeneticAlgorithum:
 
 class GeneticAlgorithumJob:
 
-    def __init__(self, tq, population, genes, mutationrate, target, maxiter):
+    def __init__(self, tq, population, genes, bestcarryover, mutationrate, target, maxiter):
         self.TrindodQue = tq
         self.Population = population
         self.Genes = genes
         self.MutationRate = mutationrate
+        self.CarryOver = bestcarryover
         self.Target = target
         self.MaxIter = maxiter
         self.Children = np.random.randint(0, 0xFFFFFF, population)
@@ -150,15 +155,15 @@ class GeneticAlgorithumJob:
         self.Create_Population()
         return self
 
-    def Load_Population(self, filepath):
+    def Load_Population(self, filepath, lowlimits, highlimits):
         self.FilePath = filepath
         PanelData = pd.read_csv(self.FilePath, index_col=False)
         PanelData = PanelData.iloc[0:self.Population]
-        PanelData = PanelData.drop(columns=['PanelID', 'Type', 'Burn-inPeakSunHours', 'Cost', 'EnergyEfficiency'])
+        PanelData = PanelData.drop(columns=['PanelID', 'Type', 'Burn-inPeakSunHours', 'EnergyEfficiency'])
         PanelData = PanelData.to_numpy()
         self.Population = PanelData
-        self.LowLimits = np.amin(PanelData, axis=0)
-        self.HighLimits = np.amax(PanelData, axis=0)
+        self.LowLimits = lowlimits
+        self.HighLimits = highlimits
         return self
 
     def Create_Population(self):

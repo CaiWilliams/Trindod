@@ -1,6 +1,6 @@
 {
   "ProjectName":["0"],
-  "PanTyp": [1,"CA#500"],
+  "PanTyp": [1,"CA#36"],
   "PanCosInf": [-1],
   "PanFlrPri": [0.245],
   "InvLif": [10],
@@ -14,9 +14,5 @@
   "RenCos": [0.5],
   "RenInf": [2.1],
   "TimStp": ["month"],
-  "Tech": ["NoEnhancment"],
-  "ProjectYield": [3.145],
-  "Latitude": [0],
-  "6": [4],
-  "Life": [0.1]
+  "Tech": ["NoEnhancment"]
 }

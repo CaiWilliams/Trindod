@@ -81,6 +81,71 @@ class Results:
         plt.show()
         return
 
+class MultipleResults:
+
+    def __init__(self,Results):
+        self.Results = Results
+
+    def Plot_one(self, category, xlable, ylable):
+        for Result in self.Results:
+            Result = pd.read_csv(Result)
+            Result['Generation'] = Result['Generation'].str[1:]
+            Result['Generation'] = Result['Generation'].astype(float)
+            R_Average = Result.groupby(['Generation']).mean().reset_index()
+            R_Min = Result.groupby(['Generation']).min().reset_index()
+            R_Max = Result.groupby(['Generation']).max().reset_index()
+            plt.plot(R_Average['Generation'], R_Average[category])
+            #plt.fill_between(R_Average['Generation'], R_Min[category], R_Max[category], alpha=.1)
+        plt.xlabel(xlable)
+        plt.ylabel(ylable)
+        plt.show()
+
+    def Plot_all(self):
+        fig, ax = plt.subplots(nrows=6)
+
+        for Result in self.Results:
+
+            Result = pd.read_csv(Result)
+            Result['Generation'] = Result['Generation'].str[1:]
+            Result['Generation'] = Result['Generation'].astype(float)
+            R_Average = Result.groupby(['Generation']).mean().reset_index()
+            R_Best = Result.loc[Result.groupby('Generation')['Results'].idxmin()]
+            #R_Min = Result.groupby(['Generation']).min().reset_index()
+            #R_Max = Result.groupby(['Generation']).max().reset_index()
+
+            ax[0].plot(R_Average['Generation'], R_Average['0'])
+            ax[1].plot(R_Average['Generation'], R_Average['1'])
+            ax[2].plot(R_Average['Generation'], R_Average['2'])
+            ax[3].plot(R_Average['Generation'], R_Average['3'])
+            ax[4].plot(R_Average['Generation'], R_Average['4'])
+            ax[5].plot(R_Average['Generation'], R_Average['Results'])
+
+            ax[0].plot(R_Average['Generation'], R_Best['0'])
+            ax[1].plot(R_Average['Generation'], R_Best['1'])
+            ax[2].plot(R_Average['Generation'], R_Best['2'])
+            ax[3].plot(R_Average['Generation'], R_Best['3'])
+            ax[4].plot(R_Average['Generation'], R_Best['4'])
+            ax[5].plot(R_Average['Generation'], R_Best['Results'])
+
+        ax[0].set_ylabel("Lifetime", fontsize=13)
+        ax[0].tick_params(labelsize=13)
+        ax[1].set_ylabel("Burn-in", fontsize=13)
+        ax[1].tick_params(labelsize=13)
+        ax[2].set_ylabel("Long term \n Degredation", fontsize=13)
+        ax[2].tick_params(labelsize=13)
+        ax[3].set_ylabel("Cost", fontsize=13)
+        ax[3].tick_params(labelsize=13)
+        ax[4].set_ylabel("Power \n Desnsity", fontsize=13)
+        ax[4].tick_params(labelsize=13)
+        ax[5].set_ylabel("LCOE", fontsize=13)
+        ax[5].tick_params(labelsize=13)
+        ax[5].set_xlabel("Generation", fontsize=13)
+
+        fig.legend(['Average Device','Best Device'],loc='center right',prop={'size':13})
+        fig.tight_layout()
+        plt.subplots_adjust(hspace=0.01,right=0.90,left=0.06,bottom=0.05)
+        plt.show()
+
 def directory(Dir):
     Devices = os.listdir(Dir)
     for Device in Devices:
@@ -98,7 +163,14 @@ def directory(Dir):
     plt.show()
     return
 
+
 #directory('Generations')
-R = Results('Generations/20210309-130520.csv')
+#R = Results('Generations/20210329-115304.csv')
 #R.PlotAll()
-R.PlotOne('Results','Generations','LCOE')
+#R.PlotOne('3','Generations','LCOE')
+
+#R = MultipleResults(['Generations/Australia5.csv','Generations/Brazil2.csv','Generations/India2.csv','Generations/Japan2.csv','Generations/SouthAfrica2.csv','Generations/Spain2.csv','Generations/UK.csv','Generations/USA.csv'])
+R = MultipleResults(['Generations/USA2.csv'])
+#R = MultipleResults(['Generations/Australia3.csv','Generations/Australia4.csv'])
+#R.Plot_one('0','A','B')
+R.Plot_all()
