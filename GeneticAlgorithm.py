@@ -1,10 +1,11 @@
 from Trindod import *
-
+from RunTrindod import *
 
 class GeneticAlgorithum:
 
     def __init__(self, job, paneldata):
         self.TrindodQue = job.TrindodQue
+        self.filename = job.FilePath
         self.paneldata = paneldata
         self.Population = job.Population
         self.Genes = job.Genes
@@ -64,6 +65,25 @@ class GeneticAlgorithum:
         NamedPopulation['Results'] = self.Results
         NamedPopulation.to_csv('Generations\\' + Gen + '.csv')
         return
+
+    def Best_Lifetime(self):
+        self.ExpandedPopulation = self.Population
+        lifetimes = [10, 15, 20, 25]
+        expandedlifetime = np.repeat(lifetimes, len(self.Population))
+        self.ExpandedPopulation = np.tile(self.ExpandedPopulation, (len(lifetimes), 1))
+        self.Children = np.tile(self.Children, len(lifetimes))
+        self.ExpandedPopulation[:, 0] = expandedlifetime
+        self.T.Q.LoadPan3(self.ExpandedPopulation)
+        self.T.Run()
+        Results = self.T.FetchReults()
+        TotPop = pd.DataFrame(self.ExpandedPopulation)
+        TotPop['Results'] = Results
+        TotPop['Children'] = self.Children
+        TotPop = TotPop.loc[TotPop.groupby('Children')['Results'].idxmin()]
+        self.Children = TotPop['Children'].to_numpy()
+        self.Population = TotPop[[0, 1, 2, 3, 4]].to_numpy()
+        self.T.LoadJBS()
+        return
     
     def Save_PanelData(self):
         PanelData = pd.DataFrame()
@@ -101,7 +121,7 @@ class GeneticAlgorithum:
         for idx, Pop in enumerate(self.Population):
             Mutation = np.random.uniform(0, 1)
             if Mutation > 1 - self.MutationRate:
-                MutatedGene = np.random.randint(0, self.Genes)
+                MutatedGene = np.random.randint(1, self.Genes)
                 NewGene = np.random.uniform(self.LowLimits[MutatedGene], self.HighLimits[MutatedGene])
                 Pop[MutatedGene] = NewGene
                 self.Population[idx] = Pop
@@ -120,8 +140,10 @@ class GeneticAlgorithum:
 
     def Itterate(self):
         self.T.LoadJBS()
+        self.Save_PanelData()
         while self.Generation < self.MaxIter:
             print(self.Generation)
+            self.Best_Lifetime()
             self.Save_PanelData()
             self.T.Q.LoadPan2()
             self.T.Run()
@@ -162,6 +184,22 @@ class GeneticAlgorithumJob:
         PanelData = PanelData.drop(columns=['PanelID', 'Type', 'Burn-inPeakSunHours', 'EnergyEfficiency'])
         PanelData = PanelData.to_numpy()
         self.Population = PanelData
+        self.LowLimits = lowlimits
+        self.HighLimits = highlimits
+        return self
+
+    def Upscale_Population(self, filepath, lowlimits, highlimits):
+        self.FilePath = filepath
+        PanelData = pd.read_csv(self.FilePath, index_col=False)
+        PanelData = PanelData.drop(columns=['PanelID', 'Type', 'Burn-inPeakSunHours', 'EnergyEfficiency'])
+        PanelDataLen = len(PanelData)
+        UpscaledPopLen = self.Population - PanelDataLen
+        UpscaledPop = pd.DataFrame()
+        PanelDataMean = PanelData.mean()
+        PanelDataStd = PanelData.std()
+        for col in PanelData.columns:
+            UpscaledPop[col] = np.random.normal(PanelDataMean[col], PanelDataStd[col], UpscaledPopLen)
+        self.Population = PanelData.append(UpscaledPop).to_numpy()
         self.LowLimits = lowlimits
         self.HighLimits = highlimits
         return self

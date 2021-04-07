@@ -107,7 +107,26 @@ class JobQue:
     def LoadPan2(self):
         P = pd.read_csv(self.PanelData)
         self.EM = list()
+        #self.Jobs =len(self.Jobs))
         for i in range(len(self.Jobs)):
+            try:
+                self.Pan = P[P['PanelID'] == self.Jobs[i]['PanTyp']].to_dict(orient='records')[0]
+            except BaseException:
+                self.Pan = P[P['PanelID'] == str(self.Jobs[i]['PanTyp'])].to_dict(orient='records')[0]
+            self.Jobs[i].update(self.Pan)
+        i = 0
+        for Job in self.Jobs:
+            f = self.Panels + "\\" + str(Job['Tech']) + ".csv"
+            self.EM.append(pd.read_csv(f).to_dict(orient='records'))
+            self.Jobs[i].update(self.EM[i][0])
+            i = i + 1
+        return
+
+    def LoadPan3(self,length):
+        P = pd.read_csv(self.PanelData)
+        self.EM = list()
+        self.Jobs = np.tile(self.Jobs,int((len(length)/len(self.Jobs))))
+        for i in range(len(length)):
             try:
                 self.Pan = P[P['PanelID'] == self.Jobs[i]['PanTyp']].to_dict(orient='records')[0]
             except BaseException:
