@@ -125,7 +125,7 @@ class JobQue:
     def LoadPan3(self,length):
         P = pd.read_csv(self.PanelData)
         self.EM = list()
-        self.Jobs = np.tile(self.Jobs,int((len(length)/len(self.Jobs))))
+        self.Jobs = np.tile(self.Jobs, 4)#int((len(length)/len(self.Jobs))))
         for i in range(len(length)):
             try:
                 self.Pan = P[P['PanelID'] == self.Jobs[i]['PanTyp']].to_dict(orient='records')[0]

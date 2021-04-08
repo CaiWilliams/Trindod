@@ -170,7 +170,7 @@ def directory(Dir):
 #R.PlotOne('3','Generations','LCOE')
 
 #R = MultipleResults(['Generations/Australia5.csv','Generations/Brazil2.csv','Generations/India2.csv','Generations/Japan2.csv','Generations/SouthAfrica2.csv','Generations/Spain2.csv','Generations/UK.csv','Generations/USA.csv'])
-R = MultipleResults(['Generations/20210407-155404.csv'])
+R = MultipleResults(['Generations/20210408-152638.csv'])
 #R = MultipleResults(['Generations/Australia3.csv','Generations/Australia4.csv'])
 #R.Plot_one('0','A','B')
 R.Plot_all()

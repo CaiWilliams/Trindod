@@ -54,8 +54,8 @@ if __name__ == '__main__':
     #A.Run()
     #A.ReRun()
     #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 36, 5, 5, 0.15, 0, 5, [0,0,0,0.06,0.01], [25,1,1,0.245,392])
-    Tests = ['ResultSets/Presenation/SouthAfrica/SouthAfrica']
+    Tests = ['ResultSets/Presenation/Japan/Japan']
     for Test in Tests:
         A = LCOERun(Test, 'Data/Initialpopulation.csv')
-        A.GA_Upscale_Population('Data/PanelData.csv', Test, 499, 5, 2, 0.2, 0, 100, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
+        A.GA_Upscale_Population('Data/PanelData.csv', Test, 100, 5, 10, 0.5, 0, 50, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
        #A.GA_Random_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, [0,0,0,0], [100,100,100,100], j, 0, 50)

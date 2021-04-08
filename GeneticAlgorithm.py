@@ -17,6 +17,8 @@ class GeneticAlgorithum:
         self.Children = job.Children
         self.Generation = 0
         self.BestCarryOver = job.CarryOver
+        self.PanelDataMean = job.PanelDataMean
+        self.PanelDataCov = job.PanelDataCov
         self.T = LCOE(self.TrindodQue, self.paneldata)
     
     def Save_Popultaion_To_Obj(self):
@@ -68,7 +70,7 @@ class GeneticAlgorithum:
 
     def Best_Lifetime(self):
         self.ExpandedPopulation = self.Population
-        lifetimes = [10, 15, 20, 25]
+        lifetimes = [2, 10, 15, 25]
         expandedlifetime = np.repeat(lifetimes, len(self.Population))
         self.ExpandedPopulation = np.tile(self.ExpandedPopulation, (len(lifetimes), 1))
         self.Children = np.tile(self.Children, len(lifetimes))
@@ -100,8 +102,8 @@ class GeneticAlgorithum:
         return
     
     def Breed_Population(self):
-        self.Mothers = np.random.choice(range(len(self.Population)), int(len(self.Population))-self.BestCarryOver, p=self.Fitness)
-        self.Fathers = np.random.choice(range(len(self.Population)), int(len(self.Population))-self.BestCarryOver, p=self.Fitness)
+        self.Mothers = np.random.choice(range(len(self.Population)), int(len(self.Population))-self.BestCarryOver, p = self.Fitness)
+        self.Fathers = np.random.choice(range(len(self.Population)), int(len(self.Population))-self.BestCarryOver, p = self.Fitness)
         self.Top = np.argpartition(self.Fitness, -self.BestCarryOver)[-self.BestCarryOver:]
         NP = np.zeros(np.shape(self.Population))
         NP[-self.BestCarryOver:] = self.Population[self.Top]
@@ -122,9 +124,21 @@ class GeneticAlgorithum:
             Mutation = np.random.uniform(0, 1)
             if Mutation > 1 - self.MutationRate:
                 MutatedGene = np.random.randint(1, self.Genes)
-                NewGene = np.random.uniform(self.LowLimits[MutatedGene], self.HighLimits[MutatedGene])
-                Pop[MutatedGene] = NewGene
+                if MutatedGene == 3:
+                    NewGene = np.random.normal(0,self.PanelDataMean[3]*0.1, 1)
+                else:
+                    NewGene = np.random.multivariate_normal([0, 0, 0, 0, 0], self.PanelDataCov, 1)[0][MutatedGene]
+                #NewGene = np.random.uniform(self.LowLimits[MutatedGene], self.HighLimits[MutatedGene])
+                #Pop[MutatedGene] = NewGene
+                Pop[MutatedGene] = Pop[MutatedGene] + NewGene
                 self.Population[idx] = Pop
+        Lower = np.where(self.Population < self.LowLimits)
+        Higher = np.where(self.Population > self.HighLimits)
+
+        for i, j in zip(Lower[0], Lower[1]):
+            self.Population[i, j] = self.LowLimits[j]
+        for i, j in zip(Higher[0], Higher[1]):
+            self.Population[i, j] = self.HighLimits[j]
         return 
 
     def Test_Population(self):
@@ -139,6 +153,8 @@ class GeneticAlgorithum:
         return 
 
     def Itterate(self):
+        #self.T.LoadJBS()
+        self.T.GenerateJBS()
         self.T.LoadJBS()
         self.Save_PanelData()
         while self.Generation < self.MaxIter:
@@ -195,13 +211,21 @@ class GeneticAlgorithumJob:
         PanelDataLen = len(PanelData)
         UpscaledPopLen = self.Population - PanelDataLen
         UpscaledPop = pd.DataFrame()
-        PanelDataMean = PanelData.mean()
-        PanelDataStd = PanelData.std()
-        for col in PanelData.columns:
-            UpscaledPop[col] = np.random.normal(PanelDataMean[col], PanelDataStd[col], UpscaledPopLen)
-        self.Population = PanelData.append(UpscaledPop).to_numpy()
+        PanelDataArray = PanelData.to_numpy()
+        self.PanelDataMean = np.mean(PanelDataArray, axis=0)
+        self.PanelDataCov = np.cov(PanelDataArray.T)
+        UpscaledPop = np.random.multivariate_normal(self.PanelDataMean, self.PanelDataCov, UpscaledPopLen)
+        self.Population = PanelDataArray
+        self.Population = np.append(self.Population, UpscaledPop, axis=0)
         self.LowLimits = lowlimits
         self.HighLimits = highlimits
+        Lower = np.where(self.Population < self.LowLimits)
+        Higher = np.where(self.Population > self.HighLimits)
+
+        for i, j in zip(Lower[0],Lower[1]):
+            self.Population[i, j] = self.LowLimits[j]
+        for i, j in zip(Higher[0], Higher[1]):
+            self.Population[i, j] = self.HighLimits[j]
         return self
 
     def Create_Population(self):
