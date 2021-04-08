@@ -9,6 +9,16 @@ class LCOERun:
         self.filename = filename
         self.paneldatafile = paneldatafile
 
+    def ModPop(self,key,value):
+        Exp = LCOE(self.filename, self.paneldatafile)
+        Exp.Q = Que(self.filename, self.paneldatafile)
+        PopKey = list(np.where(np.array(Exp.Q.key) == str(key)))[0][0]
+        print(PopKey)
+        Exp.Q.value[PopKey] = np.arange(1,value+1,1)
+        Exp.Q.GenFile()
+        Exp.Q.SaveQue()
+        return
+
     def Run(self):
         Exp = LCOE(self.filename, self.paneldatafile)
         Exp.GenerateJBS()
@@ -32,6 +42,7 @@ class LCOERun:
         return
 
     def GA_Upscale_Population(self, GApaneldatafile, tq, population, genes, bestcarryover, mutationrate, target, maxiter, lowvalues, highvalues):
+        self.ModPop('PanTyp',population)
         GAJB = GeneticAlgorithumJob(tq, population, genes, bestcarryover, mutationrate, target, maxiter)
         GAJB = GAJB.Upscale_Population(self.paneldatafile, lowvalues, highvalues)
         GAR = GeneticAlgorithum(GAJB, GApaneldatafile)
@@ -57,5 +68,5 @@ if __name__ == '__main__':
     Tests = ['ResultSets/Presenation/Japan/Japan']
     for Test in Tests:
         A = LCOERun(Test, 'Data/Initialpopulation.csv')
-        A.GA_Upscale_Population('Data/PanelData.csv', Test, 100, 5, 10, 0.5, 0, 50, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
+        A.GA_Upscale_Population('Data/PanelData.csv', Test, 400, 5, 10, 0.5, 0, 50, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
        #A.GA_Random_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, [0,0,0,0], [100,100,100,100], j, 0, 50)

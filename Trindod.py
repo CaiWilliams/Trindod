@@ -83,6 +83,7 @@ class JobQue:
 
     def LoadPan(self):
         P = pd.read_csv(self.PanelData)
+        print(P)
         self.EM = list()
         for i in range(len(self.Jobs)):
             try:
@@ -247,6 +248,7 @@ class Que:
         JB = JobQue(self.filename + ".csv", self.paneldatafile)  # Initialies job que object
         JB.LoadQue()  # Loads RunQue as job que object
         JB.LoadLoc()  # Loads locations in job que object
+        JB.LoadPan()  # Loads panel in job que object
         JB.LoadPan()  # Loads panel in job que object
         JB.LoadTyp()  # Load panel type in job que object
         with open(self.filename + '.JBS', 'wb') as handle:
