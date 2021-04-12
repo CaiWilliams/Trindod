@@ -19,6 +19,7 @@ class GeneticAlgorithum:
         self.BestCarryOver = job.CarryOver
         self.PanelDataMean = job.PanelDataMean
         self.PanelDataCov = job.PanelDataCov
+        self.lifetimes = job.lifetimes
         self.T = LCOE(self.TrindodQue, self.paneldata)
     
     def Save_Popultaion_To_Obj(self):
@@ -70,12 +71,11 @@ class GeneticAlgorithum:
 
     def Best_Lifetime(self):
         self.ExpandedPopulation = self.Population
-        lifetimes = [2, 10, 15, 25]
-        expandedlifetime = np.repeat(lifetimes, len(self.Population))
-        self.ExpandedPopulation = np.tile(self.ExpandedPopulation, (len(lifetimes), 1))
-        self.Children = np.tile(self.Children, len(lifetimes))
+        expandedlifetime = np.repeat(self.lifetimes, len(self.Population))
+        self.ExpandedPopulation = np.tile(self.ExpandedPopulation, (len(self.lifetimes), 1))
+        self.Children = np.tile(self.Children, len(self.lifetimes))
         self.ExpandedPopulation[:, 0] = expandedlifetime
-        self.T.Q.LoadPan3(self.ExpandedPopulation)
+        self.T.Q.LoadPan3(self.ExpandedPopulation, self.lifetimes)
         self.T.Run()
         Results = self.T.FetchReults()
         TotPop = pd.DataFrame(self.ExpandedPopulation)
@@ -154,7 +154,7 @@ class GeneticAlgorithum:
 
     def Itterate(self):
         #self.T.LoadJBS()
-        self.T.GenerateJBS()
+        #self.T.GenerateJBS()
         self.T.LoadJBS()
         self.Save_PanelData()
         while self.Generation < self.MaxIter:
@@ -193,27 +193,36 @@ class GeneticAlgorithumJob:
         self.Create_Population()
         return self
 
-    def Load_Population(self, filepath, lowlimits, highlimits):
+    def MeanAndCov(self, PanelData):
+        PanelDataArray = PanelData.to_numpy()
+        self.PanelDataMean = np.mean(PanelDataArray, axis=0)
+        self.PanelDataCov = np.cov(PanelDataArray.T)
+        return self
+
+    def Load_Population(self, filepath, lowlimits, highlimits, lifetimes=[2,5,10,25]):
         self.FilePath = filepath
+        self.lifetimes = lifetimes
         PanelData = pd.read_csv(self.FilePath, index_col=False)
         PanelData = PanelData.iloc[0:self.Population]
         PanelData = PanelData.drop(columns=['PanelID', 'Type', 'Burn-inPeakSunHours', 'EnergyEfficiency'])
+        self.MeanAndCov(PanelData)
         PanelData = PanelData.to_numpy()
         self.Population = PanelData
         self.LowLimits = lowlimits
         self.HighLimits = highlimits
         return self
 
-    def Upscale_Population(self, filepath, lowlimits, highlimits):
+    def Upscale_Population(self, filepath, lowlimits, highlimits, lifetimes=[2,5,10,25]):
         self.FilePath = filepath
+        self.lifetimes = lifetimes
         PanelData = pd.read_csv(self.FilePath, index_col=False)
         PanelData = PanelData.drop(columns=['PanelID', 'Type', 'Burn-inPeakSunHours', 'EnergyEfficiency'])
+        self.MeanAndCov(PanelData)
         PanelDataLen = len(PanelData)
         UpscaledPopLen = self.Population - PanelDataLen
+        print(UpscaledPopLen)
         UpscaledPop = pd.DataFrame()
         PanelDataArray = PanelData.to_numpy()
-        self.PanelDataMean = np.mean(PanelDataArray, axis=0)
-        self.PanelDataCov = np.cov(PanelDataArray.T)
         UpscaledPop = np.random.multivariate_normal(self.PanelDataMean, self.PanelDataCov, UpscaledPopLen)
         self.Population = PanelDataArray
         self.Population = np.append(self.Population, UpscaledPop, axis=0)

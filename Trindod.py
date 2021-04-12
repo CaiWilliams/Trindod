@@ -83,16 +83,18 @@ class JobQue:
 
     def LoadPan(self):
         P = pd.read_csv(self.PanelData)
-        print(P)
         self.EM = list()
         for i in range(len(self.Jobs)):
-            try:
-                self.Pan = P[P['PanelID'] == self.Jobs[i]['PanTyp']].to_dict(orient='records')[0]
-            except BaseException:
-                self.Pan = P[P['PanelID'] == str(self.Jobs[i]['PanTyp'])].to_dict(orient='records')[0]
-            X = list(set(self.Pan.keys()).intersection(self.Jobs[i].keys()))
-            for dk in X:
-                del self.Pan[dk]
+            if i >= len(P):
+                self.Pan = P.iloc[1]
+            else:
+                try:
+                    self.Pan = P[P['PanelID'] == self.Jobs[i]['PanTyp']].to_dict(orient='records')[0]
+                except BaseException:
+                    self.Pan = P[P['PanelID'] == str(self.Jobs[i]['PanTyp'])].to_dict(orient='records')[0]
+                X = list(set(self.Pan.keys()).intersection(self.Jobs[i].keys()))
+                for dk in X:
+                    del self.Pan[dk]
             self.Jobs[i].update(self.Pan)
         i = 0
         for Job in self.Jobs:
@@ -123,10 +125,10 @@ class JobQue:
             i = i + 1
         return
 
-    def LoadPan3(self,length):
+    def LoadPan3(self,length,lifetimes):
         P = pd.read_csv(self.PanelData)
         self.EM = list()
-        self.Jobs = np.tile(self.Jobs, 4)#int((len(length)/len(self.Jobs))))
+        self.Jobs = np.tile(self.Jobs, len(lifetimes))
         for i in range(len(length)):
             try:
                 self.Pan = P[P['PanelID'] == self.Jobs[i]['PanTyp']].to_dict(orient='records')[0]
@@ -245,6 +247,7 @@ class Que:
 
     def SaveQue(self):
         self.filename = self.filename.split('.')[0]
+
         JB = JobQue(self.filename + ".csv", self.paneldatafile)  # Initialies job que object
         JB.LoadQue()  # Loads RunQue as job que object
         JB.LoadLoc()  # Loads locations in job que object

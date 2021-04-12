@@ -1,7 +1,7 @@
 from GeneticAlgorithm import *
 from Trindod import *
 import time
-
+import os
 
 class LCOERun:
 
@@ -11,12 +11,19 @@ class LCOERun:
 
     def ModPop(self,key,value):
         Exp = LCOE(self.filename, self.paneldatafile)
-        Exp.Q = Que(self.filename, self.paneldatafile)
+        with open(self.filename + '.json') as params:
+            paramsDict = json.load(params)
+            paramsDict[key][1] = value
+            with open(self.filename + 'TEMP' + '.json', 'w') as outfile:
+                json.dump(paramsDict,outfile)
+        self.filenameTemp = self.filename + 'TEMP'
+        Exp.Q = Que(self.filenameTemp, self.paneldatafile)
         PopKey = list(np.where(np.array(Exp.Q.key) == str(key)))[0][0]
-        print(PopKey)
         Exp.Q.value[PopKey] = np.arange(1,value+1,1)
+        Exp.Q.filename = self.filename
         Exp.Q.GenFile()
         Exp.Q.SaveQue()
+        os.remove(self.filenameTemp + '.json')
         return
 
     def Run(self):
@@ -32,19 +39,19 @@ class LCOERun:
         Exp.Run()
         return
 
-    def GA_Load_Population(self, GApaneldatafile, tq, population, genes, bestcarryover, mutationrate, target, maxiter, lowvalues, highvalues):
+    def GA_Load_Population(self, GApaneldatafile, tq, population, genes, lifetimes, bestcarryover, mutationrate, target, maxiter, lowvalues, highvalues):
         GAJB = GeneticAlgorithumJob(tq, population, genes, bestcarryover, mutationrate, target, maxiter)
-        GAJB = GAJB.Load_Population(self.paneldatafile, lowvalues, highvalues)
+        GAJB = GAJB.Load_Population(self.paneldatafile, lowvalues, highvalues, lifetimes)
         GAR = GeneticAlgorithum(GAJB, GApaneldatafile)
         GAR.Itterate()
         filename = time.strftime('%Y%m%d-%H%M%S')
         GAR.NamedPopulation.to_csv('Generations\\' + filename + '.csv')
         return
 
-    def GA_Upscale_Population(self, GApaneldatafile, tq, population, genes, bestcarryover, mutationrate, target, maxiter, lowvalues, highvalues):
+    def GA_Upscale_Population(self, GApaneldatafile, tq, population, genes, lifetimes, bestcarryover, mutationrate, target, maxiter, lowvalues, highvalues):
         self.ModPop('PanTyp',population)
         GAJB = GeneticAlgorithumJob(tq, population, genes, bestcarryover, mutationrate, target, maxiter)
-        GAJB = GAJB.Upscale_Population(self.paneldatafile, lowvalues, highvalues)
+        GAJB = GAJB.Upscale_Population(self.paneldatafile, lowvalues, highvalues, lifetimes)
         GAR = GeneticAlgorithum(GAJB, GApaneldatafile)
         GAR.Itterate()
         filename = time.strftime('%Y%m%d-%H%M%S')
@@ -65,8 +72,9 @@ if __name__ == '__main__':
     #A.Run()
     #A.ReRun()
     #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 36, 5, 5, 0.15, 0, 5, [0,0,0,0.06,0.01], [25,1,1,0.245,392])
-    Tests = ['ResultSets/Presenation/Japan/Japan']
+    Tests = ['ResultSets/Presenation/Australia/Australia','ResultSets/Presenation/Brazil/Brazil','ResultSets/Presenation/India/India','ResultSets/Presenation/Japan/Japan','ResultSets/Presenation/SouthAfrica/SouthAfrica','ResultSets/Presenation/Spain/Spain','ResultSets/Presenation/UK/UK','ResultSets/Presenation/USA/USA']
     for Test in Tests:
         A = LCOERun(Test, 'Data/Initialpopulation.csv')
-        A.GA_Upscale_Population('Data/PanelData.csv', Test, 400, 5, 10, 0.5, 0, 50, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
+        #A.GA_Load_Population('Data/PanelData.csv', Test, 36, 5, [1,2,5,10,25], 5, 0.15, 0, 5,[0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
+        A.GA_Upscale_Population('Data/PanelData.csv', Test, 500, 5, [2,5,10,25], 50, 0.25, 0, 50, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
        #A.GA_Random_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, [0,0,0,0], [100,100,100,100], j, 0, 50)
