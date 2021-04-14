@@ -20,6 +20,7 @@ class GeneticAlgorithum:
         self.PanelDataMean = job.PanelDataMean
         self.PanelDataCov = job.PanelDataCov
         self.lifetimes = job.lifetimes
+        self.CostStd = job.CostStd
         self.T = LCOE(self.TrindodQue, self.paneldata)
     
     def Save_Popultaion_To_Obj(self):
@@ -125,7 +126,7 @@ class GeneticAlgorithum:
             if Mutation > 1 - self.MutationRate:
                 MutatedGene = np.random.randint(1, self.Genes)
                 if MutatedGene == 3:
-                    NewGene = np.random.normal(0,self.PanelDataMean[3]*0.1, 1)
+                    NewGene = np.random.normal(0,self.CostStd, 1)
                 else:
                     NewGene = np.random.multivariate_normal([0, 0, 0, 0, 0], self.PanelDataCov, 1)[0][MutatedGene]
                 #NewGene = np.random.uniform(self.LowLimits[MutatedGene], self.HighLimits[MutatedGene])
@@ -175,7 +176,7 @@ class GeneticAlgorithum:
 
 class GeneticAlgorithumJob:
 
-    def __init__(self, tq, population, genes, bestcarryover, mutationrate, target, maxiter):
+    def __init__(self, tq, population, genes, bestcarryover, mutationrate, target, maxiter, CostMean, CostStd):
         self.TrindodQue = tq
         self.Population = population
         self.Genes = genes
@@ -186,6 +187,8 @@ class GeneticAlgorithumJob:
         self.Children = np.random.randint(0, 0xFFFFFF, population)
         vhex = np.vectorize(hex)
         self.Children = vhex(self.Children)
+        self.CostMean = CostMean
+        self.CostStd = CostStd
 
     def Random_Popultaion(self, lowlimits, highlimits):
         self.LowLimits = lowlimits
@@ -220,10 +223,10 @@ class GeneticAlgorithumJob:
         self.MeanAndCov(PanelData)
         PanelDataLen = len(PanelData)
         UpscaledPopLen = self.Population - PanelDataLen
-        print(UpscaledPopLen)
         UpscaledPop = pd.DataFrame()
         PanelDataArray = PanelData.to_numpy()
         UpscaledPop = np.random.multivariate_normal(self.PanelDataMean, self.PanelDataCov, UpscaledPopLen)
+        UpscaledPop[:,3] = np.random.normal(self.CostMean, self.CostStd, UpscaledPopLen)
         self.Population = PanelDataArray
         self.Population = np.append(self.Population, UpscaledPop, axis=0)
         self.LowLimits = lowlimits

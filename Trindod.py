@@ -62,7 +62,7 @@ class JobQue:
                 self.Jobs[i]['IRR'] = 7.5
                 tf = TimezoneFinder()
                 TZ = pytz.timezone(tf.closest_timezone_at(lat=float(lat), lng=float(lon), delta_degree=10))
-                date = datetime(2019, 12, 21, hour=15, tzinfo=TZ)
+                date = datetime.datetime(2019, 12, 21, hour=15, tzinfo=TZ)
                 elevation = get_altitude(float(lat), float(lon), date)
                 Width = 1.968
                 HeightDifference = np.sin(np.radians(Tilt)) * Width
@@ -380,7 +380,7 @@ class Panel:
             self.PVGISData = self.PVGISData.to_numpy()
             # For loop reformats date
             for i in range(len(self.PVGISData)):
-                self.PVGISData[:, 0][i] = datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
+                self.PVGISData[:, 0][i] = datetime.datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
                 self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2019)
             Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
             self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0

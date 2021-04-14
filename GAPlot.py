@@ -101,7 +101,7 @@ class MultipleResults:
         plt.show()
 
     def Plot_all(self):
-        fig, ax = plt.subplots(nrows=6)
+        fig, ax = plt.subplots(nrows=5)
 
         for Result in self.Results:
 
@@ -113,33 +113,29 @@ class MultipleResults:
             #R_Min = Result.groupby(['Generation']).min().reset_index()
             #R_Max = Result.groupby(['Generation']).max().reset_index()
 
-            ax[0].plot(R_Average['Generation'], R_Average['0'])
-            ax[1].plot(R_Average['Generation'], R_Average['1'])
-            ax[2].plot(R_Average['Generation'], R_Average['2'])
-            ax[3].plot(R_Average['Generation'], R_Average['3'])
-            ax[4].plot(R_Average['Generation'], R_Average['4'])
-            ax[5].plot(R_Average['Generation'], R_Average['Results'])
+            ax[0].plot(R_Average['Generation'], R_Average['1'])
+            ax[1].plot(R_Average['Generation'], R_Average['2'])
+            ax[2].plot(R_Average['Generation'], R_Average['3'])
+            ax[3].plot(R_Average['Generation'], R_Average['4'])
+            ax[4].plot(R_Average['Generation'], R_Average['Results'])
 
-            ax[0].plot(R_Average['Generation'], R_Best['0'])
-            ax[1].plot(R_Average['Generation'], R_Best['1'])
-            ax[2].plot(R_Average['Generation'], R_Best['2'])
-            ax[3].plot(R_Average['Generation'], R_Best['3'])
-            ax[4].plot(R_Average['Generation'], R_Best['4'])
-            ax[5].plot(R_Average['Generation'], R_Best['Results'])
+            ax[0].plot(R_Average['Generation'], R_Best['1'])
+            ax[1].plot(R_Average['Generation'], R_Best['2'])
+            ax[2].plot(R_Average['Generation'], R_Best['3'])
+            ax[3].plot(R_Average['Generation'], R_Best['4'])
+            ax[4].plot(R_Average['Generation'], R_Best['Results'])
 
-        ax[0].set_ylabel("Lifetime", fontsize=13)
+        ax[0].set_ylabel("Burn-in", fontsize=13)
         ax[0].tick_params(labelsize=13)
-        ax[1].set_ylabel("Burn-in", fontsize=13)
+        ax[1].set_ylabel("Long term \n Degredation", fontsize=13)
         ax[1].tick_params(labelsize=13)
-        ax[2].set_ylabel("Long term \n Degredation", fontsize=13)
+        ax[2].set_ylabel("Cost", fontsize=13)
         ax[2].tick_params(labelsize=13)
-        ax[3].set_ylabel("Cost", fontsize=13)
+        ax[3].set_ylabel("Power \n Desnsity", fontsize=13)
         ax[3].tick_params(labelsize=13)
-        ax[4].set_ylabel("Power \n Desnsity", fontsize=13)
+        ax[4].set_ylabel("LCOE", fontsize=13)
         ax[4].tick_params(labelsize=13)
-        ax[5].set_ylabel("LCOE", fontsize=13)
-        ax[5].tick_params(labelsize=13)
-        ax[5].set_xlabel("Generation", fontsize=13)
+        ax[4].set_xlabel("Generation", fontsize=13)
 
         fig.legend(['Average Device','Best Device'],loc='center right',prop={'size':13})
         fig.tight_layout()
@@ -170,7 +166,7 @@ def directory(Dir):
 #R.PlotOne('3','Generations','LCOE')
 
 #R = MultipleResults(['Generations/Australia5.csv','Generations/Brazil2.csv','Generations/India2.csv','Generations/Japan2.csv','Generations/SouthAfrica2.csv','Generations/Spain2.csv','Generations/UK.csv','Generations/USA.csv'])
-R = MultipleResults(['Generations/20210409-181536.csv'])
+R = MultipleResults(['Generations/20210414-162348.csv'])
 #R = MultipleResults(['Generations/Australia3.csv','Generations/Australia4.csv'])
 #R.Plot_one('0','A','B')
 R.Plot_all()
