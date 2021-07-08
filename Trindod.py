@@ -70,7 +70,40 @@ class JobQue:
                 RowWidth = ModuleRowSpacing + (np.cos((np.radians(Tilt))) * Width)
                 self.Jobs[i]['Elevation'] = elevation
                 self.Jobs[i]['Spacing'] = RowWidth
+            elif "." in Job['PrjLoc']:
+                if int(self.Jobs[i]['Latitude']) > 0:
+                    Tilt = str(np.abs(int(self.Jobs[i]['Latitude']) - 23))
+                else:
+                    Tilt = str(np.abs(int(self.Jobs[i]['Latitude']) + 23))
+                self.Jobs[i]['Tilt'] = Tilt
+                self.Jobs[i]['IRR'] = 7.5
 
+                YieldAPSHR = requests.get("https://re.jrc.ec.europa.eu/api/PVcalc?lat=" + str(self.Jobs[i]['Latitude']) + "&lon=" + str(self.Jobs[i]['Longitude']) + "&peakpower=1&loss=14&aspect=0&angle=" + str(Tilt) + "&pvtechchoice=Unknown&outputformat=csv")
+                YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
+                YieldAPSHV = YieldAPSH.getvalue()
+                if "message" in YieldAPSHV:
+                    Pass = 0
+                elif "Response [200]" in YieldAPSHV:
+                    Pass = 0
+                else:
+                    Pass = 1
+                    YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
+                    YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
+                    YieldAPSH = pd.read_csv(YieldAPSH, error_bad_lines=False, skipfooter=12, skiprows=[0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t', engine='python')
+
+                Yield = YieldAPSH['E_m'].to_numpy()
+                PSH = YieldAPSH['H(i)_m'].to_numpy()
+
+                tf = TimezoneFinder()
+                TZ = pytz.timezone(tf.closest_timezone_at(lat=float(self.Jobs[i]['Latitude']), lng=float(self.Jobs[i]['Longitude']), delta_degree=10))
+                date = datetime.datetime(2019, 12, 21, hour=15, tzinfo=TZ)
+                elevation = get_altitude(float(self.Jobs[i]['Latitude']), float(self.Jobs[i]['Longitude']), date)
+                Width = 1.968
+                HeightDifference = np.sin(np.radians(Tilt)) * Width
+                ModuleRowSpacing = HeightDifference / np.tan((np.radians(elevation)))
+                RowWidth = ModuleRowSpacing + (np.cos((np.radians(Tilt))) * Width)
+                self.Jobs[i]['Elevation'] = elevation
+                self.Jobs[i]['Spacing'] = RowWidth
             else:
                 with open((self.Locations + "\\" + str(Job['PrjLoc']) + extn)) as f:
                     self.Loc.append(json.load(f))
@@ -229,8 +262,20 @@ class Que:
                                 value[idx] = [value[idx][0]] * int(element[1])
                             if "CA" in element[0]:
                                 value[idx] = np.arange(value[idx][0], value[idx][0] + int(element[1]), 1, dtype='int')
+                            if "F" in element[0]:
+                                #value[idx] =
+                                Fa = pd.read_csv(value[idx][0])
+                                keyf = list(Fa.columns.values)
+                                valuef = [list(Fa[col].to_numpy().astype('str')) for col in keyf]
+
         self.key = key
         self.value = value
+        try:
+            self.key = self.key + keyf
+            self.value = self.value + valuef
+        except:
+            self.key = key
+            self.value = value
 
     def Declare(self, **kwargs):
         keys, values = kwargs.items()
@@ -240,6 +285,7 @@ class Que:
 
     def GenFile(self):
         Jobs = list(itertools.product(*self.value))
+        print(Jobs)
         Jobs = np.vstack(Jobs)
         Jobs = pd.DataFrame(data=Jobs, index=None, columns=self.key)
         Jobs.to_csv(self.filename + ".csv", index=False)
@@ -251,8 +297,7 @@ class Que:
         JB = JobQue(self.filename + ".csv", self.paneldatafile)  # Initialies job que object
         JB.LoadQue()  # Loads RunQue as job que object
         JB.LoadLoc()  # Loads locations in job que object
-        JB.LoadPan()  # Loads panel in job que object
-        JB.LoadPan()  # Loads panel in job que object
+        JB.LoadPan()  # Loads panel in job que objec # Loads panel in job que object
         JB.LoadTyp()  # Load panel type in job que object
         with open(self.filename + '.JBS', 'wb') as handle:
             pickle.dump(JB.Jobs, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -278,6 +323,8 @@ class EPC:
         self.NewPrice = self.InstallationCostExcPanels + self.PanelCost2
         self.InverterCostAsPercentofCiepPrice = self.InverterCost / self.InstallationCostExcPanels
         self.NewArea = ((((1.92 * math.cos(math.radians(job['Tilt']))) * 2 + job['Spacing']) * 0.99) / 2) * self.RequiredNumberPanels
+        print(self.NewArea)
+        print(self.RequiredNumberPanels)
 
 
 class TechTime:
@@ -708,7 +755,8 @@ class Out:
             'LandRental',
             'TotalCost',
             'CostCheck',
-            'LCOE']
+            'LCOE',
+            'Enhancment']
         df = pd.DataFrame(self.Panel.Dates, columns=['Date'])
         df['Irradiance'] = pd.Series(self.Panel.Irradiance, index=df.index)
         df['Panel Lifetime'] = pd.Series(self.Panel.Lifetime, index=df.index)
@@ -732,6 +780,7 @@ class Out:
         df['Land Rental'] = pd.Series(self.Finance.LandRental, index=df.index)
         df['Total Cost'] = pd.Series(self.Finance.TotalCosts, index=df.index)
         df['LCOE'] = pd.Series(self.Finance.LCOE, index=df.index)
+        df['Enhancment'] = pd.Series(self.Panel.EM, index=df.index)
         df.to_csv(str(self.Job['PrjLoc']) + "4872RSi.csv")
         return
 
@@ -798,7 +847,6 @@ class LCOE:
         for idx, devices in enumerate(devices):
             self.Q.Modify('Tech', variations[idx])
             self.Q.Modify('PanTyp', devices)
-            self.run()
         return
 
     def init(self, l,):
@@ -818,6 +866,7 @@ class LCOE:
         O = Out(job, E, t, P, I, F)
         lock.acquire()
         O.Results()
+        O.Excel()
         lock.release()
         return
 

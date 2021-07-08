@@ -13,7 +13,7 @@ class LCOERun:
         Exp = LCOE(self.filename, self.paneldatafile)
         with open(self.filename + '.json') as params:
             paramsDict = json.load(params)
-            paramsDict[key][1] = value
+            paramsDict[key][0] = value
             with open(self.filename + 'TEMP' + '.json', 'w') as outfile:
                 json.dump(paramsDict,outfile)
         self.filenameTemp = self.filename + 'TEMP'
@@ -68,13 +68,14 @@ class LCOERun:
         return
 
 if __name__ == '__main__':
-    #A = LCOERun('ResultSets/Presenation/Japan/Japan', 'Data/Initialpopulation.csv')
-    #A.Run()
+    A = LCOERun('ResultSets/Revised/Revised', 'Data/PanelDataNonGA2.csv')
+    #A.ModPop('Tech','NoEnhancment')
+    A.Run()
     #A.ReRun()
     #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 36, 5, 5, 0.15, 0, 5, [0,0,0,0.06,0.01], [25,1,1,0.245,392])
-    Tests = ['ResultSets/Presenation/Australia/Australia','ResultSets/Presenation/Brazil/Brazil','ResultSets/Presenation/India/India','ResultSets/Presenation/Japan/Japan','ResultSets/Presenation/SouthAfrica/SouthAfrica','ResultSets/Presenation/Spain/Spain','ResultSets/Presenation/UK/UK','ResultSets/Presenation/USA/USA']
-    for Test in Tests:
-        A = LCOERun(Test, 'Data/Initialpopulation.csv')
-    #    #A.GA_Load_Population('Data/PanelData.csv', Test, 36, 5, [1,2,5,10,25], 5, 0.15, 0, 5,[0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
-        A.GA_Upscale_Population('Data/PanelData.csv', Test, 100, 5, [2,5,10,25], 50, 0.25, 0, 50, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.7, 392], 0.37875, 0.559)
+    #Tests = ['ResultSets/Presenation/Australia/Australia','ResultSets/Presenation/Brazil/Brazil','ResultSets/Presenation/India/India','ResultSets/Presenation/Japan/Japan','ResultSets/Presenation/SouthAfrica/SouthAfrica','ResultSets/Presenation/Spain/Spain','ResultSets/Presenation/UK/UK','ResultSets/Presenation/USA/USA']
+    #for Test in Tests:
+    #    A = LCOERun(Test, 'Data/Initialpopulation.csv')
+    ##    #A.GA_Load_Population('Data/PanelData.csv', Test, 36, 5, [1,2,5,10,25], 5, 0.15, 0, 5,[0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.245, 392])
+    #    A.GA_Upscale_Population('Data/PanelData.csv', Test, 100, 5, [2,5,10,25], 50, 0.25, 0, 50, [0, 0, 0, 0.06, 0.01], [25, 1, 1, 0.7, 392], 0.37875, 0.559)
     #   #A.GA_Random_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 500, 4, [0,0,0,0], [100,100,100,100], j, 0, 50)
