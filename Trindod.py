@@ -131,7 +131,7 @@ class JobQue:
             self.Jobs[i].update(self.Pan)
         i = 0
         for Job in self.Jobs:
-            f = self.Panels + "\\" + str(Job['Tech']) + ".csv"
+            f = str(Job['Tech']) + ".csv"
             self.EM.append(pd.read_csv(f).to_dict(orient='records'))
             X = list(set(self.EM[i][0].keys()).intersection(self.Jobs[i].keys()))
             for dk in X:
@@ -152,7 +152,7 @@ class JobQue:
             self.Jobs[i].update(self.Pan)
         i = 0
         for Job in self.Jobs:
-            f = self.Panels + "\\" + str(Job['Tech']) + ".csv"
+            f = str(Job['Tech']) + ".csv"
             self.EM.append(pd.read_csv(f).to_dict(orient='records'))
             self.Jobs[i].update(self.EM[i][0])
             i = i + 1
@@ -170,7 +170,7 @@ class JobQue:
             self.Jobs[i].update(self.Pan)
         i = 0
         for Job in self.Jobs:
-            f = self.Panels + "\\" + str(Job['Tech']) + ".csv"
+            f = str(Job['Tech']) + ".csv"
             self.EM.append(pd.read_csv(f).to_dict(orient='records'))
             self.Jobs[i].update(self.EM[i][0])
             i = i + 1
@@ -233,18 +233,15 @@ class Que:
     def __init__(self, filename, paneldatafile):
         self.Tech = "NoEnhancment"
         self.TimStp = "hour"
-        self.RenInf = 2.1
         self.RenCos = 0.5
         self.OprCos = 0.01
         self.InvCosInf = 2.1
         self.OprCosInf = 2.1
         self.PrjLoc = "Random"
         self.PrjTyp = "GroundmountPVArray"
-        self.ModSta = "01/05/2019"
+        self.ModSta = "01/05/2015"
         self.PrjLif = 20
         self.InvLif = 10
-        self.PanFlrPri = 0.245
-        self.PanCosInf = -1
         self.PanTyp = '4110'
         self.ProjectName = "0"
         self.filename = filename
@@ -285,7 +282,6 @@ class Que:
 
     def GenFile(self):
         Jobs = list(itertools.product(*self.value))
-        print(Jobs)
         Jobs = np.vstack(Jobs)
         Jobs = pd.DataFrame(data=Jobs, index=None, columns=self.key)
         Jobs.to_csv(self.filename + ".csv", index=False)
@@ -323,8 +319,6 @@ class EPC:
         self.NewPrice = self.InstallationCostExcPanels + self.PanelCost2
         self.InverterCostAsPercentofCiepPrice = self.InverterCost / self.InstallationCostExcPanels
         self.NewArea = ((((1.92 * math.cos(math.radians(job['Tilt']))) * 2 + job['Spacing']) * 0.99) / 2) * self.RequiredNumberPanels
-        print(self.NewArea)
-        print(self.RequiredNumberPanels)
 
 
 class TechTime:
@@ -421,14 +415,14 @@ class Panel:
     def PVGIS(self, time):
         # Requests and reformats PVGIS data
         try:
-            self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015')
+            self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear='+str(time.StartDate.year)+'&endyear='+str(time.StartDate.year))
             self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
             self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
             self.PVGISData = self.PVGISData.to_numpy()
             # For loop reformats date
             for i in range(len(self.PVGISData)):
                 self.PVGISData[:, 0][i] = datetime.datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
-                self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2019)
+                #self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2019)
             Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
             self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
             self.Dates = self.PVGISData[:, 0]
@@ -781,7 +775,9 @@ class Out:
         df['Total Cost'] = pd.Series(self.Finance.TotalCosts, index=df.index)
         df['LCOE'] = pd.Series(self.Finance.LCOE, index=df.index)
         df['Enhancment'] = pd.Series(self.Panel.EM, index=df.index)
-        df.to_csv(str(self.Job['PrjLoc']) + "4872RSi.csv")
+        CurrentDatetime = datetime.datetime.now()
+        StringCurrentDatetime = CurrentDatetime.strftime('%Y%m%d%H%M%S')
+        df.to_csv(str(self.Job['PrjLoc']) + "-" + StringCurrentDatetime + ".csv")
         return
 
     # Outputs the results specified at the first line of Results.csv file
@@ -866,7 +862,7 @@ class LCOE:
         O = Out(job, E, t, P, I, F)
         lock.acquire()
         O.Results()
-        O.Excel()
+        #O.Excel()
         lock.release()
         return
 

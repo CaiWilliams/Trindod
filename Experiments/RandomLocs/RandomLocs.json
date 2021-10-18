@@ -1,0 +1,14 @@
+{
+  "ProjectName":["0"],
+  "PanTyp": [4110],
+  "InvLif": [10],
+  "PrjLif": [20],
+  "ModSta": ["01/06/2014"],
+  "PrjTyp": ["GroundmountPVArray"],
+  "PrjLoc": ["Random","X#50"],
+  "OprCosInf": [2.1],
+  "InvCosInf": [2.1],
+  "RenCos": [0.5],
+  "TimStp": ["hour"],
+  "Tech": ["Data/Panel/NoEnhancment"]
+}
