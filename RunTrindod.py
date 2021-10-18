@@ -70,8 +70,8 @@ class LCOERun:
 if __name__ == '__main__':
     A = LCOERun('ResultSets/Revised/Revised', 'Data/PanelDataNonGA2.csv')
     #A.ModPop('Tech','NoEnhancment')
-    A.Run()
-    #A.ReRun()
+    #A.Run()
+    A.ReRun()
     #A.GA_Load_Population('Data/PanelData.csv', 'ResultSets/GA/Uk/GAMonthlyUk', 36, 5, 5, 0.15, 0, 5, [0,0,0,0.06,0.01], [25,1,1,0.245,392])
     #Tests = ['ResultSets/Presenation/Australia/Australia','ResultSets/Presenation/Brazil/Brazil','ResultSets/Presenation/India/India','ResultSets/Presenation/Japan/Japan','ResultSets/Presenation/SouthAfrica/SouthAfrica','ResultSets/Presenation/Spain/Spain','ResultSets/Presenation/UK/UK','ResultSets/Presenation/USA/USA']
     #for Test in Tests:

@@ -285,7 +285,6 @@ class Que:
 
     def GenFile(self):
         Jobs = list(itertools.product(*self.value))
-        print(Jobs)
         Jobs = np.vstack(Jobs)
         Jobs = pd.DataFrame(data=Jobs, index=None, columns=self.key)
         Jobs.to_csv(self.filename + ".csv", index=False)
@@ -323,8 +322,6 @@ class EPC:
         self.NewPrice = self.InstallationCostExcPanels + self.PanelCost2
         self.InverterCostAsPercentofCiepPrice = self.InverterCost / self.InstallationCostExcPanels
         self.NewArea = ((((1.92 * math.cos(math.radians(job['Tilt']))) * 2 + job['Spacing']) * 0.99) / 2) * self.RequiredNumberPanels
-        print(self.NewArea)
-        print(self.RequiredNumberPanels)
 
 
 class TechTime:
@@ -363,6 +360,12 @@ class TechTime:
             self.AdvanceInt = 1 / 24
             self.InterestDivisor = 8760
             self.Entrants = (self.EndDate - self.StartDate).days * 24
+        elif self.TimeStepString == "halfhour":
+            self.Advance = relativedelta(minutes=30)
+            self.GHDivisor = D * 48
+            self.AdvanceInt = 1 / 48
+            self.InterestDivisor = 17520
+            self.Entrants = (self.EndDate - self.StartDate).days * 48
 
         self.Dates = np.empty(self.Entrants, dtype=datetime)
         I = np.linspace(0, self.Entrants, self.Entrants, dtype=np.int)
@@ -421,14 +424,14 @@ class Panel:
     def PVGIS(self, time):
         # Requests and reformats PVGIS data
         try:
-            self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015')
+            self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2016&endyear=2016')
             self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
             self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
             self.PVGISData = self.PVGISData.to_numpy()
             # For loop reformats date
             for i in range(len(self.PVGISData)):
                 self.PVGISData[:, 0][i] = datetime.datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
-                self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2019)
+                self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2016)
             Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
             self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
             self.Dates = self.PVGISData[:, 0]
@@ -436,6 +439,31 @@ class Panel:
         except BaseException:
             ttime.sleep(2)
             self.PVGIS(time)
+        return
+
+    def PVGIS_HalfHour(self, time):
+        # Requests and reformats PVGIS data
+        req = 'https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015'
+        self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015')
+        self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
+        self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
+        self.PVGISData = self.PVGISData.to_numpy()
+        # For loop reformats date
+        for i in range(len(self.PVGISData)):
+            self.PVGISData[:, 0][i] = datetime.datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
+            self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2015)
+        Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
+        self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
+        g_half_hours = self.PVGISData[:, 1]
+        g_half_hours = np.insert(g_half_hours, -1, 0)
+        g_half_hours = (g_half_hours[1:] + g_half_hours[:-1])/2
+        t_half_hours = self.PVGISData[:, 0] + relativedelta(minutes=30)
+        T = np.stack((t_half_hours,g_half_hours), axis=-1)
+        T = np.vstack((self.PVGISData, T))
+        T = T[T[:, 0].argsort()]
+        self.PVGISData = T
+        self.Dates = self.PVGISData[:, 0]
+        self.Irradiance = self.PVGISData[:, 1]
         return
 
     # Expands a single years worth of PVGIS Data to length of defined project
@@ -447,7 +475,7 @@ class Panel:
         self.Lifetime[0] = self.FullLifetime
         Yield = self.Yield
         PSH = self.PSH
-        if time.TimeStepString == 'hour':
+        if time.TimeStepString == 'hour' or 'halfhour':
             self.Yield = np.zeros(len(self.Dates))
             self.PSH = np.zeros(len(self.Dates))
             for i in range(len(self.Dates)):
@@ -498,6 +526,16 @@ class Panel:
             self.Yield = Yield
             self.PSH = PeakSunHours
             self.CPSH = np.cumsum(self.PSH[:])
+        elif time.TimeStepString == 'halfhour':
+            for i in range(1, 13):
+                Irradiance = self.Irradiance[np.where(Month == i)]
+                IrradianceSum[i - 1] = np.sum(Irradiance)
+            for i in range(len(self.Dates)):
+                Yield[i] = self.Irradiance[i] * (Yield[i] / IrradianceSum[int(Month[i] - 1)])
+                PeakSunHours[i] = self.Irradiance[i] * (PeakSunHours[i] / IrradianceSum[int(Month[i] - 1)])
+            self.Yield = Yield
+            self.PSH = PeakSunHours
+            self.CPSH = np.cumsum(self.PSH[:])
             return
 
     # Calculates the degredation of the panel
@@ -535,6 +573,10 @@ class Panel:
             self.EffectiveCapacity = self.Capacity * self.EM
         elif time.TimeStepString == 'month':
             self.EffectiveCapacity = self.Capacity
+        elif time.TimeStepString == 'halfhour':
+            self.EffectiveMultiplier()
+            self.EffectiveCapacity = self.Capacity * self.EM
+
 
         PrevEffCap = np.roll(self.EffectiveCapacity, -1)
         self.PVGen[:] = self.Yield[:] * (self.EffectiveCapacity[:] + PrevEffCap[:]) / 2
@@ -574,6 +616,8 @@ class Panel:
     def Simulate(self, time):
         if time.TimeStepString == 'hour':
             self.PVGIS(time)
+        elif time.TimeStepString == 'halfhour':
+            self.PVGIS_HalfHour(time)
         else:
             self.Dates = time.Dates
         self.YieldAndPeakSunHours(time)
@@ -706,10 +750,9 @@ class Finance:
         tc = self.TotalCosts[:]
         pv = self.PVGen[:]
         ii = i[:] / self.InterestDivisor
-        self.Top = (self.NewPrice + np.abs(self.xnpv(self.DCR, tc[:], ii[:])))
-        self.Bottom = self.xnpv(self.DCR, pv[:], ii[:])
         self.LCOE = (self.NewPrice + np.abs(self.xnpv(self.DCR, tc[:], ii[:]))) / self.xnpv(self.DCR, pv[:], ii[:])
         return
+
 
     def xnpv(self, dcr, values, date):
         V = np.sum(values[:] / (1.0 + dcr) ** (date[:]))
@@ -869,6 +912,20 @@ class LCOE:
         O.Excel()
         lock.release()
         return
+
+    def WorkerNonMP(self, job):
+        E = EPC(job)
+        t = TechTime(job)
+        P = Panel(job)
+        P.Simulate(t)
+        I = Inverter(job, t)
+        I.Simulate()
+        F = Finance(job, E, t, P, I)
+        F.Costs()
+        F.LCOECalculate()
+        O = Out(job, E, t, P, I, F)
+        O.Results()
+        return O
 
     def Run(self):
         l = multiprocessing.Lock()

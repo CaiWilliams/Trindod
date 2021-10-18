@@ -173,7 +173,6 @@ class GeneticAlgorithum:
             self.Generation = self.Generation + 1
         return
 
-
 class GeneticAlgorithumJob:
 
     def __init__(self, tq, population, genes, bestcarryover, mutationrate, target, maxiter, CostMean, CostStd):
