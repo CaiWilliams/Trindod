@@ -39,7 +39,7 @@ class LCOERun:
         return
 
 if __name__ == '__main__':
-    experiment = LCOERun('Experiments/RandomLoc/RandomLoc', 'Data/PanelData.csv')
+    experiment = LCOERun('Experiments/RandomLocs/RandomLocs', 'Data/PanelData.csv')
     #experiment.ModPop('Tech','NoEnhancment')
     #experiment.Run()
     experiment.ReRun()
