@@ -1,11 +1,11 @@
 {
   "ProjectName":["0"],
-  "PanTyp": [4892],
+  "PanTyp": [4110,4880],
   "InvLif": [10],
   "PrjLif": [20],
   "ModSta": ["01/06/2014"],
   "PrjTyp": ["GroundmountPVArray"],
-  "PrjLoc": ["UKAvg"],
+  "PrjLoc": ["Stockholm","Cornwall"],
   "OprCosInf": [2.1],
   "InvCosInf": [2.1],
   "RenCos": [0.5],
