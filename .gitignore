@@ -153,4 +153,4 @@ dmypy.json
 *.hdf5
 *.xlsx
 .idea/
-/ven2
+venv2
