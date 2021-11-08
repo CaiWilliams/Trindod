@@ -17,6 +17,7 @@ from timezonefinder import TimezoneFinder
 import random
 import multiprocessing
 import tqdm
+from Ryfeddod import *
 from multiprocessing import Pool
 
 
@@ -62,7 +63,7 @@ class JobQue:
                 self.Jobs[i]['IRR'] = 7.5
                 tf = TimezoneFinder()
                 TZ = pytz.timezone(tf.closest_timezone_at(lat=float(lat), lng=float(lon), delta_degree=10))
-                date = datetime.datetime(2019, 12, 21, hour=15, tzinfo=TZ)
+                date = datetime.datetime(2015, 12, 21, hour=15, tzinfo=TZ)
                 elevation = get_altitude(float(lat), float(lon), date)
                 Width = 1.968
                 HeightDifference = np.sin(np.radians(Tilt)) * Width
@@ -193,12 +194,14 @@ class JobQue:
     def get_loc(self):
         Pass = 0
         while Pass == 0:
-            lat = str(random.randint(-35, 60))
-            lon = str(random.randint(20, 30))
-            if int(lat) > 0:
-                Tilt = str(np.abs(int(lat) - 23))
+            lat = str(random.uniform(-35, 60))
+            lon = str(random.uniform(-20, 60))
+            #lat = str(random.uniform(35, 60))
+            #lon = str(random.uniform(-10, 60))
+            if float(lat) > 0:
+                Tilt = str(np.abs(float(lat) - 23))
             else:
-                Tilt = str(np.abs(int(lat) + 23))
+                Tilt = str(np.abs(float(lat) + 23))
             YieldAPSHR = requests.get("https://re.jrc.ec.europa.eu/api/PVcalc?lat=" + lat + "&lon=" + lon + "&peakpower=1&loss=14&aspect=0&angle=" + Tilt + "&pvtechchoice=Unknown&outputformat=csv")
             YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
             YieldAPSHV = YieldAPSH.getvalue()
@@ -219,7 +222,7 @@ class JobQue:
                     YieldAPSH, error_bad_lines=False, skipfooter=12, skiprows=[
                         0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t', engine='python')
                 self.num = self.num + Pass
-        return lat, lon, YieldAPSH, int(Tilt)
+        return lat, lon, YieldAPSH, float(Tilt)
 
     def RandomLocGen(self):
         lat, lon, YP, Tilt = self.get_loc()
@@ -307,12 +310,26 @@ class EPC:
     #  the Initialises the EPC object and calculates all economic factors
 
     def __init__(self, job):
-        self.OriginalCost = job['Design'] + job['Construction'] + job['Framing'] + job['DCcabling'] + job['ACcabling'] + job['CivilWork(Panels)'] + job['CivilWork(general)'] + job['PVPanels'] + job['FixedProjectCosts'] + job['Freight(Panels)'] + job['Freight(other)'] + job['Inverters'] + job['Controls']
-        self.PriceExcludingPanels = self.OriginalCost - job['PVPanels']
+        self.Design = job['Design'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.Construction = job['Construction'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.Framing = job['Framing'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.DCcabling = job['DCcabling'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.ACcabling = job['ACcabling'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.CivilWorkPanels = job['CivilWork(Panels)'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.CivilWorkGeneral = job['CivilWork(general)'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.PVPanels = job['PVPanels'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.FixedProjectCosts = job['FixedProjectCosts'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.FreightPanels = job['Freight(Panels)'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.FreightOther = job['Freight(other)'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.Inverters = job['Inverters'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.Controls = job['Controls'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
+        self.OriginalCost = self.Design + self.Construction + self.Framing + self.DCcabling + self.ACcabling + self.CivilWorkPanels + self.CivilWorkGeneral + self.PVPanels + self.FixedProjectCosts + self.FreightPanels + self.FreightOther + self.Inverters + self.Controls
+        #self.OriginalCost = job['Design'] + job['Construction'] + job['Framing'] + job['DCcabling'] + job['ACcabling'] + job['CivilWork(Panels)'] + job['CivilWork(general)'] + job['PVPanels'] + job['FixedProjectCosts'] + job['Freight(Panels)'] + job['Freight(other)'] + job['Inverters'] + job['Controls']
+        self.PriceExcludingPanels = self.OriginalCost - (job['PVPanels'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000)))
         self.PanelSize = 410
         self.NumberOfPanels = 1000 * (job['PVSize'] / self.PanelSize)
         self.InstallCostPerPanel = self.PriceExcludingPanels / self.NumberOfPanels
-        self.InverterCost = job['Inverters']
+        self.InverterCost = job['Inverters'] * (job['DollarPerWatt'] * (job['PVSize'] * 1000))
         self.OldArea = job['SystemArea']
         self.PanelCost = job['Cost']
         self.EqRatingPanels = job['PowerDensity'] * 1.968 * 0.992
@@ -414,6 +431,7 @@ class Panel:
         self.GR = job['4']
         self.MG = job['5']
         self.X = job['6']
+        self.PowerDensity = job['PowerDensity']
         try:
             self.ET = job['7']
         except BaseException:
@@ -423,22 +441,30 @@ class Panel:
     # Requests irradiance data from PVGIS
     def PVGIS(self, time):
         # Requests and reformats PVGIS data
-        try:
-            self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2016&endyear=2016')
-            self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
-            self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
-            self.PVGISData = self.PVGISData.to_numpy()
-            # For loop reformats date
-            for i in range(len(self.PVGISData)):
-                self.PVGISData[:, 0][i] = datetime.datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
-                self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2016)
-            Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
-            self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
-            self.Dates = self.PVGISData[:, 0]
-            self.Irradiance = self.PVGISData[:, 1]
-        except BaseException:
-            ttime.sleep(2)
-            self.PVGIS(time)
+
+        self.PVGISData = requests.get('https://re.jrc.ec.europa.eu/api/seriescalc?' + 'lat=' + str(self.Latitude) + '&lon=' + str(self.Longitude) + '&angle=' + str(self.Tilt) + '&startyear=2015&endyear=2015')
+        self.PVGISData = io.StringIO(self.PVGISData.content.decode('utf-8'))
+        #self.Temp = io.StringIO(self.PVGISData.content.decode('utf-8'))
+        #print(pd.read_csv(copy.deepcopy(self.PVGISData), skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)']))
+        self.Temp = pd.read_csv(copy.deepcopy(self.PVGISData), skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'T2m']).to_numpy()
+        self.Temp = self.Temp[:,1]
+        #print(self.Temp)
+        #self.WindSpeed = io.StringIO(self.PVGISData.content.decode('utf-8'))
+        self.WindSpeed = pd.read_csv(copy.deepcopy(self.PVGISData), skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python',usecols=['time', 'WS10m']).to_numpy()
+        self.WindSpeed = self.WindSpeed[:,1]
+        self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
+        self.PVGISData = self.PVGISData.to_numpy()
+        # For loop reformats date
+        for i in range(len(self.PVGISData)):
+            self.PVGISData[:, 0][i] = datetime.datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
+            #self.PVGISData[:, 0][i] = self.PVGISData[:, 0][i].replace(year=2016)
+        Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]  # Identifies index of start date in PVGIS Data
+        self.PVGISData = np.roll(self.PVGISData, -Shift * 2)  # Shifts starts date to index = 0
+        self.Dates = self.PVGISData[:, 0]
+        self.Irradiance = self.PVGISData[:, 1]
+        #except BaseException:
+         #   ttime.sleep(2)
+         #   self.PVGIS(time)
         return
 
     def PVGIS_HalfHour(self, time):
@@ -637,6 +663,17 @@ class Panel:
             Device = pd.read_csv(str(self.LA))
             f = interp1d(Device['Irradiance'], Device['Enhanced'], fill_value="extrapolate")
             self.EM = f(self.Irradiance)
+        elif self.ET == 'MaxLinear':
+            PCE0Max = 30
+            x = np.linspace(1,1000,1000)
+            PCE1 = self.PowerDensity/9.8
+            EM0 = PCE0Max/PCE1
+            print(PCE1, EM0)
+            y = EM0/(1000-x)
+            plt.plot(x,y)
+            plt.show()
+
+
         else:
             A = np.exp(-self.GR * (self.Irradiance - self.X))
             self.EM = self.LA + ((self.UA - self.LA) / (self.C + self.Q * A)) ** (1 / self.MG)
@@ -745,6 +782,50 @@ class Finance:
         return
 
     # Calculates the LCOE at the end of the project
+    def LCCACalculate(self):
+
+        Data = pd.DataFrame()
+        Data['Settlement Date'] = self.Dates
+        Data['Settlement Date'] = [x.replace(tzinfo=pytz.UTC) for x in Data['Settlement Date']]
+        Data['Generation'] = self.PVGen / 1000
+        Data = Data.set_index('Settlement Date')
+
+        Baseline = Setup('Data/2015RawT.NGM', 'Data/Devices/DSSC.csv', 53.13359, -1.746826)
+        Baseline = Scaling(Baseline, 1, 1, 0, 0)
+        Baseline = Expand_Generation(Baseline, 20)
+        Baseline = Expand_Sacler(Baseline, 20)
+        for Asset in Baseline.Mix['Technologies']:
+            if Asset['Technology'] == 'SolarBTMNT':
+                Baseline.Mix['Technologies'].remove(Asset)
+        Baseline = Grid.Demand(Baseline)
+        DistBaseline = Dispatch(Baseline)
+        CarbonEmissionsBaseline = DistBaseline.CarbonEmissions
+
+        FarmAdded = Setup('Data/2015RawT.NGM', 'Data/Devices/DSSC.csv', 53.13359, -1.746826)
+        FarmAdded = Scaling(FarmAdded, 1, 1, 1, 0)
+        FarmAdded = Expand_Generation(FarmAdded, 20)
+        FarmAdded = Expand_Sacler(FarmAdded, 20)
+        for Asset in FarmAdded.Mix['Technologies']:
+            if Asset['Technology'] == 'SolarBTMNT':
+                FarmAdded.Mix['Technologies'].remove(Asset)
+        FarmAdded.EndDate = FarmAdded.EndDate.replace(year=2015+20)
+        FarmAdded = Grid.Demand(FarmAdded)
+        FarmAdded = Add_to_SolarNT(FarmAdded, Data)
+        FarmAdded = Grid.MatchDates(FarmAdded)
+        DistFarmAdded = Dispatch(FarmAdded)
+        CarbonEmissions = DistFarmAdded.CarbonEmissions
+        CarbonSavings = (CarbonEmissionsBaseline - CarbonEmissions)/2 * (1*10**-3)
+
+        i1 = np.linspace(0, len(self.Dates), len(self.Dates))
+        i2 = np.linspace(0, len(CarbonSavings.index.to_numpy()), len(CarbonSavings.index.to_numpy()))
+        tc = self.TotalCosts
+        pv = CarbonSavings
+        ii1 = i1[:] / self.InterestDivisor
+        ii2 = i2[:] / self.InterestDivisor
+        self.LCCA = (self.NewPrice + np.abs(self.xnpv(self.DCR, tc[:], ii1[:]))) / self.xnpv(self.DCR, pv[:], ii2[:])
+
+        return
+
     def LCOECalculate(self):
         i = np.linspace(0, len(self.Dates), len(self.Dates))
         tc = self.TotalCosts[:]
@@ -753,6 +834,13 @@ class Finance:
         self.LCOE = (self.NewPrice + np.abs(self.xnpv(self.DCR, tc[:], ii[:]))) / self.xnpv(self.DCR, pv[:], ii[:])
         return
 
+    def CostsSums(self):
+        self.TotalCostsSum = np.sum(self.TotalCosts)
+        self.PaneReplacementCostSum = np.sum(self.PaneReplacementCost)
+        self.InverterReplacementCostSum = np.sum(self.InverterReplacementCost)
+        self.OAMSum = np.sum(self.OAM)
+        self.LandRentalSum = np.sum(self.LandRental)
+        return
 
     def xnpv(self, dcr, values, date):
         V = np.sum(values[:] / (1.0 + dcr) ** (date[:]))
@@ -771,7 +859,17 @@ class Out:
         self.Finance = finance
         self.count = 0
 
-        # Outputs the results as an excel file
+    # Outputs the results as an excel file
+    def Finance(self):
+        df = pd.Dataframe()
+        df["Total Costs"] = np.sum(self.Finance.TotalCosts)
+        df["Panel Replacement Costs"] = np.sum(self.Finance.PaneReplacementCost)
+        df["Inverter Replacment Costs"] = np.sum(self.Finance.InverterReplacementCost)
+        df["Operational and Maintenance"] = np.sum(self.Finance.OAM)
+        df["Land Rent"] = np.sum(self.Finance.LandRental)
+        df.to_csv(str(self.Job['PrjLoc']) + str(self.Job['Tech']) + str(self.Job["PanTyp"]) + ".csv")
+        return
+
     def Excel(self):
         CFC = [
             'Date',
@@ -824,7 +922,7 @@ class Out:
         df['Total Cost'] = pd.Series(self.Finance.TotalCosts, index=df.index)
         df['LCOE'] = pd.Series(self.Finance.LCOE, index=df.index)
         df['Enhancment'] = pd.Series(self.Panel.EM, index=df.index)
-        df.to_csv(str(self.Job['PrjLoc']) + "4872RSi.csv")
+        df.to_csv(str(self.Job['PrjLoc']) + str(self.Job['Tech']) + str(self.Job["PanTyp"]) + ".csv")
         return
 
     # Outputs the results specified at the first line of Results.csv file
@@ -840,7 +938,7 @@ class Out:
                 ResultsOutput.append(Result)
             elif Result[0] == 'Panel':
                 Result = getattr(self.Panel, Result[1])
-                ResultsOutput.append(np.average(Result[np.nonzero(Result)]))
+                ResultsOutput.append(np.average(Result))
             elif Result[0] == 'Inverter':
                 Result = getattr(self.Inverter, Result[1])[-1]
                 ResultsOutput.append(Result)
@@ -896,6 +994,27 @@ class LCOE:
         global lock
         lock = l
 
+    def WorkerLCCA(self, job):
+        E = EPC(job)
+        t = TechTime(job)
+        P = Panel(job)
+        P.Simulate(t)
+        I = Inverter(job, t)
+        I.Simulate()
+        F = Finance(job, E, t, P, I)
+        F.Costs()
+        F.LCOECalculate()
+        F.LCCACalculate()
+        F.CostsSums()
+        O = Out(job, E, t, P, I, F)
+        lock.acquire()
+        O.Results()
+        #O.Finance()
+        #O.Excel()
+        lock.release()
+        return
+
+
     def Worker(self, job):
         E = EPC(job)
         t = TechTime(job)
@@ -909,7 +1028,7 @@ class LCOE:
         O = Out(job, E, t, P, I, F)
         lock.acquire()
         O.Results()
-        O.Excel()
+        #O.Excel()
         lock.release()
         return
 
@@ -926,6 +1045,16 @@ class LCOE:
         O = Out(job, E, t, P, I, F)
         O.Results()
         return O
+
+    def RunLCCA(self):
+        l = multiprocessing.Lock()
+        with tqdm.tqdm(total=(len(self.Q.Jobs))) as pbar:
+            with Pool(processes=multiprocessing.cpu_count() - 1, initializer=self.init, initargs=(l,)) as pool:
+                for i, _ in enumerate(pool.imap_unordered(self.WorkerLCCA, self.Q.Jobs)):
+                    pbar.update()
+                pool.close()
+                pool.join()
+        return
 
     def Run(self):
         l = multiprocessing.Lock()

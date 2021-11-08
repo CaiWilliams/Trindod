@@ -1,0 +1,19 @@
+{
+  "ProjectName":["0"],
+  "PanTyp": [4876],
+  "PanCosInf": [-1],
+  "PanFlrPri": [0.245],
+  "InvLif": [10],
+  "PrjLif": [20],
+  "Irr": ["Medium Risk"],
+  "ModSta": ["01/01/2015"],
+  "PrjTyp": ["GroundmountPVArray"],
+  "PrjLoc": ["Random",],
+  "OprCosInf": [2.1],
+  "InvCosInf": [2.1],
+  "OprCos": [0.01],
+  "RenCos": [0.5],
+  "RenInf": [2.1],
+  "TimStp": ["hour"],
+  "Tech": ["NoEnhancment"]
+}

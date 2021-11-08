@@ -31,14 +31,14 @@ NG1 = Grid.Demand(NG1)
 DNG1 = Dispatch(NG1)
 x = DNG1.CarbonEmissions
 
-NG2 = Setup('Data/2015RawT.NGM', 'Data/Devices/DSSC.csv', 53.13359, -1.746826)
-NG2 = Scaling(NG2, 1, 1, 1, 0)
+#NG2 = Setup('Data/2015RawT.NGM', 'Data/Devices/DSSC.csv', 53.13359, -1.746826)
+NG2 = Scaling(NG1, 1, 1, 1, 0)
 NG2 = Expand_Generation(NG2, 20)
 NG2 = Expand_Sacler(NG2, 20)
-for Asset in NG2.Mix['Technologies']:
-    if Asset['Technology'] == 'SolarBTMNT':
-        NG2.Mix['Technologies'].remove(Asset)
-NG2.EndDate = NG2.EndDate.replace(year=2015+20)
+#for Asset in NG2.Mix['Technologies']:
+#    if Asset['Technology'] == 'SolarBTMNT':
+#        NG2.Mix['Technologies'].remove(Asset)
+#NG2.EndDate = NG2.EndDate.replace(year=2015+20)
 NG2 = Grid.Demand(NG2)
 NG2 = Add_to_SolarNT(NG2, Data)
 NG2 = Grid.MatchDates(NG2)

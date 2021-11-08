@@ -1,0 +1,2 @@
+ProjectName,PanTyp,PanCosInf,PanFlrPri,InvLif,PrjLif,Irr,ModSta,PrjTyp,PrjLoc,OprCosInf,InvCosInf,OprCos,RenCos,RenInf,TimStp,Tech
+0,4881,-1,0.245,10,20,Medium Risk,01/01/2015,GroundmountPVArray,UkAvg,2.1,2.1,0.01,0.5,2.1,hour,DSSC

@@ -1,0 +1,19 @@
+{
+  "ProjectName":["0"],
+  "PanTyp": [4894,4893,4895,4896,4897,4898,4899,4900,4901,4902,4903,4904,4905,4906,4907,4908,4909,4910,4911,4912,4913,4914,4915,4916,4917,4918,4919,4920,4921,4922,4923],
+  "PanCosInf": [-1],
+  "PanFlrPri": [0.245],
+  "InvLif": [10],
+  "PrjLif": [20],
+  "Irr": ["Medium Risk"],
+  "ModSta": ["01/01/2015"],
+  "PrjTyp": ["GroundmountPVArray"],
+  "PrjLoc": ["UkAvg"],
+  "OprCosInf": [2.1],
+  "InvCosInf": [2.1],
+  "OprCos": [0.01],
+  "RenCos": [0.5],
+  "RenInf": [2.1],
+  "TimStp": ["hour"],
+  "Tech": ["MaxLinear"]
+}
