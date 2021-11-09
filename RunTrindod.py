@@ -1,45 +1,47 @@
 from Trindod import *
-import time
 import os
+import ujson
+
 
 class LCOERun:
 
     def __init__(self, filename, paneldatafile):
         self.filename = filename
-        self.paneldatafile = paneldatafile
+        self.panel_datafile = paneldatafile
 
-    def ModPop(self,key,value):
-        Exp = LCOE(self.filename, self.paneldatafile)
+    def mod_pop(self, key, value):
+        exp = LCOE(self.filename, self.panel_datafile)
         with open(self.filename + '.json') as params:
-            paramsDict = json.load(params)
-            paramsDict[key][0] = value
+            params_dict = ujson.load(params)
+            params_dict[key][0] = value
             with open(self.filename + 'TEMP' + '.json', 'w') as outfile:
-                json.dump(paramsDict,outfile)
-        self.filenameTemp = self.filename + 'TEMP'
-        Exp.Q = Que(self.filenameTemp, self.paneldatafile)
-        PopKey = list(np.where(np.array(Exp.Q.key) == str(key)))[0][0]
-        Exp.Q.value[PopKey] = np.arange(1,value+1,1)
-        Exp.Q.filename = self.filename
-        Exp.Q.GenFile()
-        Exp.Q.SaveQue()
-        os.remove(self.filenameTemp + '.json')
+                ujson.dump(params_dict, outfile)
+
+        filename_temp = self.filename + 'TEMP'
+        exp.Q = Que(filename_temp, self.panel_datafile)
+        pop_key = list(np.where(np.array(exp.Q.key) == str(key)))[0][0]
+        exp.Q.value[pop_key] = np.arange(1, value + 1, 1)
+        exp.Q.filename = self.filename
+        exp.Q.gen_file()
+        exp.Q.save_que()
+        os.remove(filename_temp + '.json')
         return
 
-    def Run(self):
-        Exp = LCOE(self.filename, self.paneldatafile)
-        Exp.GenerateJBS()
-        Exp.LoadJBS()
-        Exp.Run()
+    def run(self):
+        exp = LCOE(self.filename, self.panel_datafile)
+        exp.generate_jbs()
+        exp.load_jbs()
+        exp.run()
         return
 
-    def ReRun(self):
-        Exp = LCOE(self.filename, self.paneldatafile)
-        Exp.LoadJBS()
-        Exp.Run()
+    def re_run(self):
+        exp = LCOE(self.filename, self.panel_datafile)
+        exp.load_jbs()
+        exp.run()
         return
+
 
 if __name__ == '__main__':
+    #experiment = LCOERun('Experiments/TwoPanTypTwoPrjLoc/TwoPanTypTwoPrjLoc','Data/PanelData.csv')
     experiment = LCOERun('Experiments/RandomLocs/RandomLocs', 'Data/PanelData.csv')
-    #experiment.ModPop('Tech','NoEnhancment')
-    #experiment.Run()
-    experiment.ReRun()
+    experiment.run()

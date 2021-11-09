@@ -9,6 +9,6 @@
   "OprCosInf": [2.1],
   "InvCosInf": [2.1],
   "RenCos": [0.5],
-  "TimStp": ["hour"],
+  "TimStp": ["month"],
   "Tech": ["Data/Panel/NoEnhancment"]
 }
