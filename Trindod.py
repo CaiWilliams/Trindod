@@ -19,6 +19,7 @@ import multiprocessing
 import tqdm
 from Ryfeddod import *
 from multiprocessing import Pool
+from tzwhere import tzwhere
 
 
 class JobQue:
@@ -30,6 +31,7 @@ class JobQue:
         self.PanelData = paneldata
         self.Types = r'Data\Type'
         self.num = 0
+        self.tf2 = tzwhere.tzwhere(forceTZ=True)
         return
 
     def ReRun(self, of):
@@ -51,35 +53,56 @@ class JobQue:
     def LoadLoc(self):
         extn = ".json"
         self.Loc = list()
-        i = 0
-        for Job in self.Jobs:
-            if Job['PrjLoc'] == 'Random':
+        self.i = 0
+        while self.i < len(self.Jobs):
+            if self.Jobs[self.i]['PrjLoc'] == 'Random':
                 Yield, PSH, Tilt, lat, lon = self.RandomLocGen()
-                self.Jobs[i]['Yield'] = Yield
-                self.Jobs[i]['PeakSunHours'] = PSH
-                self.Jobs[i]['Tilt'] = Tilt
-                self.Jobs[i]['Latitude'] = lat
-                self.Jobs[i]['Longitude'] = lon
-                self.Jobs[i]['IRR'] = 7.5
+                self.Jobs[self.i]['Yield'] = Yield
+                self.Jobs[self.i]['PeakSunHours'] = PSH
+                self.Jobs[self.i]['Tilt'] = Tilt
+                self.Jobs[self.i]['Latitude'] = lat
+                self.Jobs[self.i]['Longitude'] = lon
+                self.Jobs[self.i]['IRR'] = 7.5
                 tf = TimezoneFinder()
-                TZ = pytz.timezone(tf.closest_timezone_at(lat=float(lat), lng=float(lon), delta_degree=10))
+                TZ = pytz.timezone(self.tf2.tzNameAt(latitude=float(self.Jobs[self.i]['Latitude']), longitude=float(self.Jobs[self.i]['Longitude']),forceTZ=True))
                 date = datetime.datetime(2015, 12, 21, hour=15, tzinfo=TZ)
                 elevation = get_altitude(float(lat), float(lon), date)
                 Width = 1.968
                 HeightDifference = np.sin(np.radians(Tilt)) * Width
                 ModuleRowSpacing = HeightDifference / np.tan((np.radians(elevation)))
                 RowWidth = ModuleRowSpacing + (np.cos((np.radians(Tilt))) * Width)
-                self.Jobs[i]['Elevation'] = elevation
-                self.Jobs[i]['Spacing'] = RowWidth
-            elif "." in Job['PrjLoc']:
-                if int(self.Jobs[i]['Latitude']) > 0:
-                    Tilt = str(np.abs(int(self.Jobs[i]['Latitude']) - 23))
+                self.Jobs[self.i]['Elevation'] = elevation
+                self.Jobs[self.i]['Spacing'] = RowWidth
+            elif "Placeholder" in self.Jobs[self.i]['PrjLoc']:
+                print(self.i)
+                Yield, PSH, Tilt, = self.Fetch_Yeild(self.Jobs[self.i]['Latitude'], self.Jobs[self.i]['Longitude'])
+                if np.sum(Yield) == 0 and np.sum(PSH) == 0 and Tilt == 0:
+                    continue
+                self.Jobs[self.i]['Yield'] = Yield
+                self.Jobs[self.i]['PeakSunHours'] = PSH
+                self.Jobs[self.i]['Tilt'] = Tilt
+                self.Jobs[self.i]['IRR'] = 7.5
+                lat = self.Jobs[self.i]['Latitude']
+                lon = self.Jobs[self.i]['Longitude']
+                tf = TimezoneFinder()
+                TZ = pytz.timezone(self.tf2.tzNameAt(latitude=float(self.Jobs[self.i]['Latitude']), longitude=float(self.Jobs[self.i]['Longitude']),forceTZ=True))
+                date = datetime.datetime(2015, 12, 21, hour=15, tzinfo=TZ)
+                elevation = get_altitude(float(lat), float(lon), date)
+                Width = 1.968
+                HeightDifference = np.sin(np.radians(Tilt)) * Width
+                ModuleRowSpacing = HeightDifference / np.tan((np.radians(elevation)))
+                RowWidth = ModuleRowSpacing + (np.cos((np.radians(Tilt))) * Width)
+                self.Jobs[self.i]['Elevation'] = elevation
+                self.Jobs[self.i]['Spacing'] = RowWidth
+            elif "." in self.Jobs[self.i]['PrjLoc']:
+                if int(self.Jobs[self.i]['Latitude']) > 0:
+                    Tilt = str(np.abs(int(self.Jobs[self.i]['Latitude']) - 23))
                 else:
-                    Tilt = str(np.abs(int(self.Jobs[i]['Latitude']) + 23))
-                self.Jobs[i]['Tilt'] = Tilt
-                self.Jobs[i]['IRR'] = 7.5
+                    Tilt = str(np.abs(int(self.Jobs[self.i]['Latitude']) + 23))
+                self.Jobs[self.i]['Tilt'] = Tilt
+                self.Jobs[self.i]['IRR'] = 7.5
 
-                YieldAPSHR = requests.get("https://re.jrc.ec.europa.eu/api/PVcalc?lat=" + str(self.Jobs[i]['Latitude']) + "&lon=" + str(self.Jobs[i]['Longitude']) + "&peakpower=1&loss=14&aspect=0&angle=" + str(Tilt) + "&pvtechchoice=Unknown&outputformat=csv")
+                YieldAPSHR = requests.get("https://re.jrc.ec.europa.eu/api/PVcalc?lat=" + str(self.Jobs[self.i]['Latitude']) + "&lon=" + str(self.Jobs[self.i]['Longitude']) + "&peakpower=1&loss=14&aspect=0&angle=" + str(Tilt) + "&pvtechchoice=Unknown&outputformat=csv")
                 YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
                 YieldAPSHV = YieldAPSH.getvalue()
                 if "message" in YieldAPSHV:
@@ -96,23 +119,23 @@ class JobQue:
                 PSH = YieldAPSH['H(i)_m'].to_numpy()
 
                 tf = TimezoneFinder()
-                TZ = pytz.timezone(tf.closest_timezone_at(lat=float(self.Jobs[i]['Latitude']), lng=float(self.Jobs[i]['Longitude']), delta_degree=10))
+                TZ = pytz.timezone(self.tf2.tzNameAt(latitude=float(self.Jobs[i]['Latitude']), longitude=float(self.Jobs[i]['Longitude']),forceTZ=True))
                 date = datetime.datetime(2019, 12, 21, hour=15, tzinfo=TZ)
-                elevation = get_altitude(float(self.Jobs[i]['Latitude']), float(self.Jobs[i]['Longitude']), date)
+                elevation = get_altitude(float(self.Jobs[self.i]['Latitude']), float(self.Jobs[self.i]['Longitude']), date)
                 Width = 1.968
                 HeightDifference = np.sin(np.radians(Tilt)) * Width
                 ModuleRowSpacing = HeightDifference / np.tan((np.radians(elevation)))
                 RowWidth = ModuleRowSpacing + (np.cos((np.radians(Tilt))) * Width)
-                self.Jobs[i]['Elevation'] = elevation
-                self.Jobs[i]['Spacing'] = RowWidth
+                self.Jobs[self.i]['Elevation'] = elevation
+                self.Jobs[self.i]['Spacing'] = RowWidth
             else:
-                with open((self.Locations + "\\" + str(Job['PrjLoc']) + extn)) as f:
+                with open((self.Locations + "\\" + str(self.Jobs[self.i]['PrjLoc']) + extn)) as f:
                     self.Loc.append(json.load(f))
-                X = list(set(self.Loc[i].keys()).intersection(self.Jobs[i].keys()))
+                X = list(set(self.Loc[self.i].keys()).intersection(self.Jobs[self.i].keys()))
                 for dk in X:
-                    del self.Loc[i][dk]
-                self.Jobs[i].update(self.Loc[i])
-            i = i + 1
+                    del self.Loc[self.i][dk]
+                self.Jobs[self.i].update(self.Loc[self.i])
+            self.i = self.i + 1
         return
 
     def LoadPan(self):
@@ -230,6 +253,31 @@ class JobQue:
         PSH = YP['H(i)_m'].to_numpy()
         return Yield, PSH, Tilt, lat, lon
 
+    def Fetch_Yeild(self,lat,lon):
+        Pass = 0
+        while Pass == 0:
+            if float(lat) > 0:
+                Tilt = str(np.abs(float(lat) - 23))
+            else:
+                Tilt = str(np.abs(float(lat) + 23))
+            YieldAPSHR = requests.get("https://re.jrc.ec.europa.eu/api/PVcalc?lat=" + str(lat) + "&lon=" + str(lon) + "&peakpower=1&loss=14&aspect=0&angle=" + Tilt + "&pvtechchoice=Unknown&outputformat=csv")
+            YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
+            YieldAPSHV = YieldAPSH.getvalue()
+            YieldAPSH = io.StringIO(YieldAPSHR.content.decode('utf-8'))
+            if "message" in YieldAPSHV:
+                self.Jobs.remove(self.Jobs[self.i])
+                return 0, 0, 0
+            #    Pass = 0
+            elif "Response [200]" in YieldAPSHV:
+                return 0, 0, 0
+            #    Pass = 0
+            Pass = 1
+        YieldAPSH = pd.read_csv(YieldAPSH, error_bad_lines=False, skipfooter=12, skiprows=[0, 1, 2, 3, 4, 5, 6, 7, 8],delimiter='\t\t', engine='python')
+        Yield = YieldAPSH['E_m'].to_numpy()
+        PSH = YieldAPSH['H(i)_m'].to_numpy()
+        return Yield, PSH, float(Tilt)
+
+
 
 class Que:
 
@@ -270,6 +318,8 @@ class Que:
                                 Fa = pd.read_csv(value[idx][0])
                                 keyf = list(Fa.columns.values)
                                 valuef = [list(Fa[col].to_numpy().astype('str')) for col in keyf]
+                            if "L" in element[0]:
+                                value[idx] = np.linspace(value[idx][1],value[idx][2],value[idx][3])
 
         self.key = key
         self.value = value
