@@ -31,7 +31,10 @@ class LCOERun:
         exp = LCOE(self.filename, self.panel_datafile)
         exp.generate_jbs()
         exp.load_jbs()
-        exp.run()
+        x = pd.DataFrame(exp.Q.Jobs[0])
+        x = x.iloc[0]
+        x.to_json('job.json')
+        #exp.run()
         return
 
     def re_run(self):
@@ -43,5 +46,5 @@ class LCOERun:
 
 if __name__ == '__main__':
     #experiment = LCOERun('Experiments/TwoPanTypTwoPrjLoc/TwoPanTypTwoPrjLoc','Data/PanelData.csv')
-    experiment = LCOERun('Experiments/RandomLocs/RandomLocs', 'Data/PanelData.csv')
+    experiment = LCOERun('Experiments/TwoPanTypTwoPrjLoc/TwoPanTypTwoPrjLoc', 'Data/PanelData.csv')
     experiment.run()
