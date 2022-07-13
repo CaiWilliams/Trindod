@@ -1,4 +1,6 @@
 import pickle
+import time
+
 import pandas as pd
 import math
 import datetime as dt
@@ -6,7 +8,7 @@ import calendar
 from dateutil.relativedelta import *
 import numpy as np
 import time as tt
-from scipy.interpolate import interp1d
+#from scipy.interpolate import interp1d
 import pytz
 from pysolar.solar import *
 import itertools
@@ -18,15 +20,17 @@ import tqdm
 from multiprocessing import Pool
 from tzwhere import tzwhere
 import ujson
+import os
+from datetime import datetime
 
 
 class JobQue:
 
     def __init__(self, que, paneldata):
         self.Jobs = que
-        self.Locations = r'Data\Location'
+        self.Locations = os.path.join('Data','Location')
         self.PanelData = paneldata
-        self.Types = r'Data\Type'
+        self.Types = os.path.join('Data','Type')
         self.num = 0
         self.Loc = list()
         self.EM = list()
@@ -85,7 +89,7 @@ class JobQue:
                 date = dt.datetime(2019, 12, 21, hour=15, tzinfo=tz)
                 elevation = get_altitude(float(self.Jobs[i]['Latitude']), float(self.Jobs[i]['Longitude']), date)
             else:
-                with open((self.Locations + "\\" + str(Job['PrjLoc']) + extn)) as f:
+                with open(os.path.join(self.Locations,str(Job['PrjLoc'])+extn)) as f:
                     self.Loc.append(ujson.load(f))
                 x = list(set(self.Loc[i].keys()).intersection(
                     self.Jobs[i].keys()))
@@ -143,7 +147,7 @@ class JobQue:
         extn = ".csv"
         i = 0
         for Job in self.Jobs:
-            f = self.Types + "\\" + Job['PrjTyp'] + extn
+            f = os.path.join(self.Types,Job['PrjTyp'] + extn)
             self.Typ.append(pd.read_csv(f).to_dict(orient='records'))
             X = list(set(self.Typ[i][0].keys()).intersection(
                 self.Jobs[i].keys()))
@@ -184,9 +188,7 @@ class JobQue:
             else:
                 Pass = 1
                 YieldAPSHR = io.StringIO(YieldAPSHR.content.decode('utf-8'))
-                YieldAPSH = pd.read_csv(
-                    YieldAPSHR, error_bad_lines=False, skipfooter=12, skiprows=[
-                        0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t', engine='python')
+                YieldAPSH = pd.read_csv(YieldAPSHR, error_bad_lines=False, skipfooter=12, skiprows=[0, 1, 2, 3, 4, 5, 6, 7, 8], delimiter='\t\t', engine='python')
                 self.num += Pass
         return lat, lon, YieldAPSH, int(Tilt)
 
@@ -278,14 +280,13 @@ class EPC:
         self.PanelCost2 = self.PanelCost * 1000 * job['PVSize']
         self.NewPrice = self.InstallationCostExcPanels + self.PanelCost2
         self.InverterCostAsPercentofCiepPrice = self.InverterCost / self.InstallationCostExcPanels
-        self.NewArea = ((((1.92 * math.cos(math.radians(job['Tilt']))) * 2 +
-                          job['Spacing']) * 0.99) / 2) * self.RequiredNumberPanels
+        self.NewArea = ((((1.92 * math.cos(math.radians(job['Tilt']))) * 2 + job['Spacing']) * 0.99) / 2) * self.RequiredNumberPanels
 
 
 class TechTime:
     #  Initialises the TechTime object
     def __init__(self, job):
-        from datetime import datetime
+        #from datetime import datetime
         self.StartDateString = job['ModSta']
         self.TimeStepString = job['TimStp'].lower()
 
@@ -309,7 +310,7 @@ class TechTime:
             self.InterestDivisor = 365
             self.Entrants = self.ProjectTime * 52
         elif self.TimeStepString == "hour":
-            self.Advance = relativedelta(hours=1)
+            self.Advance = dt.timedelta(hours=1)
             self.AdvanceInt = 1 / 24
             self.InterestDivisor = 8760
             self.Entrants = (self.EndDate - self.StartDate).days * 24
@@ -328,14 +329,12 @@ class Panel:
         job['Long-termDegradation'] /= np.sum(job['PeakSunHours'])
         # Tries to calculate the degradation coefficient a, if exception occurs a = 0
         try:
-            self.a = (1 - job['Long-termDegradation'] * job['Burn-inPeakSunHours'] -
-                      (1 - job['Burn-in'])) / np.power(job['Burn-inPeakSunHours'], 2)
+            self.a = (1 - job['Long-termDegradation'] * job['Burn-inPeakSunHours'] -(1 - job['Burn-in'])) / np.power(job['Burn-inPeakSunHours'], 2)
         except BaseException:
             self.a = 0
         # Tries to calculate the degradation coefficient b, if exception occurs b= 0
         try:
-            self.b = (-job['Long-termDegradation'] - 2 *
-                      self.a * job['Burn-inPeakSunHours'])
+            self.b = (-job['Long-termDegradation'] - 2 * self.a * job['Burn-inPeakSunHours'])
         except BaseException:
             self.b = 0
 
@@ -362,6 +361,7 @@ class Panel:
         except BaseException:
             self.ET = 'R'
 
+
     # Requests irradiance data from PVGIS
     def pvgis(self, time):
         # Requests and reformats PVGIS data
@@ -379,15 +379,11 @@ class Panel:
                                          str(time.StartDate.year))
             self.PVGISData = io.StringIO(
                 PVGISDataCall.content.decode('utf-8'))
-            self.PVGISData = pd.read_csv(
-                self.PVGISData, skipfooter=9, skiprows=[
-                    0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=[
-                    'time', 'G(i)'])
+            self.PVGISData = pd.read_csv(self.PVGISData, skipfooter=9, skiprows=[0, 1, 2, 3, 4, 5, 6, 7], engine='python', usecols=['time', 'G(i)'])
             self.PVGISData = self.PVGISData.to_numpy()
             # For loop reformat date
             for i in range(len(self.PVGISData)):
-                self.PVGISData[:, 0][i] = dt.datetime.strptime(
-                    self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
+                self.PVGISData[:, 0][i] = dt.datetime.strptime(self.PVGISData[:, 0][i][:-2], '%Y%m%d:%H')
             # Identifies index of start date in PVGIS Data
             Shift = np.where(self.PVGISData[:, 0][:] == time.StartDate)[0][0]
             # Shifts starts date to index = 0
@@ -402,19 +398,20 @@ class Panel:
     # Expands a single years worth of PVGIS Data to length of defined project
     def expand(self, time):
         self.Dates = time.Dates
-        self.Irradiance = np.zeros(len(self.Dates))
-        self.Lifetime = np.zeros(len(self.Dates))
-        self.PVGen = np.zeros(len(self.Dates))
+        len_dates = len(self.Dates)
+        self.Irradiance = np.zeros(len_dates)
+        self.Lifetime = np.zeros(len_dates)
+        self.PVGen = np.zeros(len_dates)
         self.Lifetime[0] = self.FullLifetime
         Yield = self.Yield
         PSH = self.PSH
         if time.TimeStepString == 'hour':
-            self.Yield = np.zeros(len(self.Dates))
-            self.PSH = np.zeros(len(self.Dates))
-            for i in range(len(self.Dates)):
-                self.Irradiance[i] = self.PVGISData[:, 1][i % len(self.PVGISData)]
-                self.Yield[i] = Yield[i % len(self.PVGISData)]
-                self.PSH[i] = PSH[i % len(self.PVGISData)]
+            self.Yield = np.zeros(len_dates)
+            self.PSH = np.zeros(len_dates)
+            for i in range(len_dates):
+                self.Irradiance[i] = self.PVGISData[:, 1][i % len_dates]
+                self.Yield[i] = Yield[i % len_dates]
+                self.PSH[i] = PSH[i % len_dates]
         self.CPSH = np.cumsum(self.PSH)
         return
 
@@ -430,7 +427,7 @@ class Panel:
         for Date in self.Dates:
             Yield[i] = self.Yield[Date.month - 1]
             PeakSunHours[i] = self.PSH[Date.month - 1]
-            Days[i] = calendar.monthrange(Date.year, Date.month)[1]
+            #Days[i] = calendar.monthrange(Date.year, Date.month)[1]
             Month[i] = np.int(Date.month)
             i += 1
         if time.TimeStepString == 'month':
@@ -450,13 +447,16 @@ class Panel:
             self.PSH = PeakSunHours
             return
         elif time.TimeStepString == 'hour':
-            for i in range(1, 13):
-                Irradiance = self.Irradiance[np.where(Month == i)]
-                IrradianceSum[i - 1] = np.sum(Irradiance)
-            for i in range(len(self.Dates)):
-                Yield[i] = self.Irradiance[i] * \
-                           (Yield[i] / IrradianceSum[int(Month[i] - 1)])
-                PeakSunHours[i] = self.Irradiance[i] * (PeakSunHours[i] / IrradianceSum[int(Month[i] - 1)])
+            if np.sum(self.Irradiance) == 0:
+                Yield = np.zeros(len(self.Irradiance))
+                PeakSunHours = np.zeros(len(self.Irradiance))
+            else:
+                for i in range(1, 13):
+                    Irradiance = self.Irradiance[np.where(Month == i)]
+                    IrradianceSum[i - 1] = np.sum(Irradiance)
+                for i in range(len(self.Dates)):
+                    Yield[i] = self.Irradiance[i] * (Yield[i] / IrradianceSum[int(Month[i] - 1)])
+                    PeakSunHours[i] = self.Irradiance[i] * (PeakSunHours[i] / IrradianceSum[int(Month[i] - 1)])
             self.Yield = Yield
             self.PSH = PeakSunHours
             self.CPSH = np.cumsum(self.PSH[:])
@@ -494,7 +494,8 @@ class Panel:
 
         # Calculates the effective capacity of the array
         if time.TimeStepString == 'hour':
-            self.effective_multiplier()
+            #self.effective_multiplier()
+            self.EM = 1
             self.EffectiveCapacity = self.Capacity * self.EM
         elif time.TimeStepString == 'month':
             self.EffectiveCapacity = self.Capacity
@@ -539,10 +540,17 @@ class Panel:
     # Simulates the life of of the panels
     def simulate(self, lifetime):
         if lifetime.TimeStepString == 'hour':
-            self.pvgis(lifetime)
+            self.Dates = lifetime.Dates
+            self.PVGISData = np.zeros((len(lifetime.Dates),2))
+            self.Irradiance = np.zeros(len(lifetime.Dates))
+            self.Yield = np.zeros(len(self.Irradiance))
+            self.PSH = np.zeros(len(self.Irradiance))
+            self.CPSH = np.zeros(len(self.Irradiance))
+            #self.pvgis(lifetime)
+            a = 0
         else:
             self.Dates = lifetime.Dates
-        self.yield_and_peak_sun_hours(lifetime)
+        #self.yield_and_peak_sun_hours(lifetime)
         self.expand(lifetime)
         self.panel_age(lifetime)
         while np.any(self.Lifetime < 0):
@@ -554,20 +562,14 @@ class Panel:
     def effective_multiplier(self):
         WhereZero = np.where(self.Irradiance == 0)
         if self.ET == 'P':
-            self.EM = np.power(self.Irradiance * self.LA,
-                               3) - np.power(self.Irradiance * self.UA,
-                                             2) + (self.Irradiance * self.C) + self.Q
+            self.EM = np.power(self.Irradiance * self.LA,3) - np.power(self.Irradiance * self.UA,2) + (self.Irradiance * self.C) + self.Q
         elif self.ET == 'R':
             Device = pd.read_csv(str(self.LA))
-            f = interp1d(
-                Device['Irradiance'],
-                Device['Enhanced'],
-                fill_value="extrapolate")
+            f = interp1d(Device['Irradiance'],Device['Enhanced'],fill_value="extrapolate")
             self.EM = f(self.Irradiance)
         else:
             A = np.exp(-self.GR * (self.Irradiance - self.X))
-            self.EM = self.LA + ((self.UA - self.LA) /
-                                 (self.C + self.Q * A)) ** (1 / self.MG)
+            self.EM = self.LA + ((self.UA - self.LA) / (self.C + self.Q * A)) ** (1 / self.MG)
         self.EM[WhereZero] = 0
         return
 
@@ -590,8 +592,7 @@ class Inverter:
             index = np.arange(0, len(self.Dates) - self.ReplacementDateIndex, 1, dtype=int)
             self.Lifetime[self.ReplacementDateIndex:] = self.FullLifetime - (self.AdvanceInt * index[:])
             try:
-                self.ReplacementDateIndex = np.where(
-                    self.Lifetime < self.AdvanceInt)[0][0]
+                self.ReplacementDateIndex = np.where(self.Lifetime < self.AdvanceInt)[0][0]
             except BaseException:
                 return
         return
@@ -636,8 +637,7 @@ class Finance:
 
         i = np.linspace(0, len(self.Dates), len(self.Dates))
         self.PanelReplacementCostOther = np.zeros(len(self.Dates))
-        self.PanelReplacementCostOther[self.PanelReplacements] = (self.NewPrice * 0.1) * np.power(
-            (1 + self.InverterCostInflation), (((i[self.PanelReplacements] / self.InterestDivisor) / 365) - 1))
+        self.PanelReplacementCostOther[self.PanelReplacements] = (self.NewPrice * 0.1) * np.power((1 + self.InverterCostInflation), (((i[self.PanelReplacements] / self.InterestDivisor) / 365) - 1))
 
         self.PaneReplacementCost = self.PanelReplacementCostPV + self.PanelReplacementCostOther
 

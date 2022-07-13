@@ -10,9 +10,10 @@ from GA import *
 import copy
 import multiprocessing as mp
 import tqdm
+import itertools
 
 class bulk_calc:
-    def __init__(self, dir,exp_name,name):
+    def __init__(self, dir,exp_name,name,pce_min,pce_max,cost_min, cost_max):
         pathp = os.path.join(os.getcwd(), dir+'_Power')
         filesp = natsort.natsorted(os.listdir(pathp))
         filesp= [os.path.join(pathp,file) for file in filesp]
@@ -36,19 +37,30 @@ class bulk_calc:
                 datat = dill.load(handle)
                 datat = datat[datat != 0]
                 datat = datat[-1]
+        Res_og = datat.result[0, 1]
+        Data = pd.read_csv(filesp[0])
+        DataE = Data['Energy'].values
+        DataE_og = np.sum(DataE)
+
+
         Cost  = self.cost(datat)
-        print(Cost)
-        Res = [idx[1] for idx in datat.result]
-        Data = [pd.read_csv(file) for file in filesp]
-        DataE = [data['Energy'].values for data in Data]
-        vfunc = np.vectorize(self.create_job)
-        jobs = vfunc(job,Cost,Res)
+        Cost = np.round(np.arange(cost_min, cost_max+1e-5, 1e-5), 5)
+        Res = np.round(np.arange(pce_min, pce_max+0.1, 0.1), 3)
+        CostRes = list(itertools.product(Cost,Res))
+        CostRes = np.asarray([list(cr) for cr in CostRes])
+        print(CostRes)
+        print(len(CostRes))
+        #DataE = np.zeros((len(CostRes),len(Data)))
+        DataE_Temp = np.ones(len(Data)) * (DataE_og/len(Data))
+        DataE = [DataE_Temp * (costres[1]/Res_og) for costres in CostRes]
+        vfunc = np.vectorize(bulk_calc.create_job)
+        jobs = vfunc(job,CostRes[:,0],CostRes[:,1])
         with mp.Pool(mp.cpu_count() - 1) as p:
             lcoe = list(tqdm.tqdm(p.imap(bulk_calc.worker,zip(jobs,DataE)), total=len(jobs)))
         data = pd.DataFrame(lcoe)
         data.to_csv(name+'.csv')
 
-    def cost(self,datat):
+    def cost(self, datat):
         temp = datat.population[:]
         Cell_area = 0.98  # 6.00005025e-6
         ITO_Desnity = 7.14 * 100
@@ -82,7 +94,8 @@ class bulk_calc:
     def chromo_value(self, f, val):
         return f.chromosomes[val]
 
-    def create_job(self,job,cost,res):
+    @staticmethod
+    def create_job(job, cost, res):
         job = copy.deepcopy(job)
         job['Cost'] = cost
         pce = res / 100
@@ -131,7 +144,7 @@ class PCE:
 
 #bulk_calc('PM6Y6_100','PM6Y6_PCECOST','PM6Y6_100_LCOE')
 if __name__ == '__main__':
-    bulk_calc('PM6Y6_200','PM6Y6_PCECOST','PM6Y6_200_LCOE')
+    bulk_calc('PM6Y6_200','PM6Y6_PCECOST','Tabulated_LCOE',0.001,35,0.00001,0.3)
 #bulk_calc('PM6Y6_400','PM6Y6_PCECOST','PM6Y6_400_LCOE')
 #bulk_calc('PM6Y6_600','PM6Y6_PCECOST','PM6Y6_600_LCOE')
 #bulk_calc('PM6Y6_800','PM6Y6_PCECOST','PM6Y6_800_LCOE')
